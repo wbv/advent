@@ -15,6 +15,8 @@ fn main() -> io::Result<()> {
 	/* create a regular expression to capture our inputs */
 	let re = Regex::new(r"(\d+)-(\d+) (\w): (\w+)").unwrap();
 
+	let mut valid_count = 0;
+
 	for line in buf.lines() {
 		/* capture each component of the password line */
 		let text = line.expect("Bad input string").to_string();
@@ -32,9 +34,21 @@ fn main() -> io::Result<()> {
 		let password = captured
 			.get(4).expect("couldn't find password string").as_str();
 
-		/* parse each matched component and print them out */
-		println!("{} to {} of {} inside {}", min, max, letter, password);
-	}
+		/* count the occurrences of letter in password */
+		let mut num_chars = 0;
+		for ch in password.chars() {
+			if ch == letter {
+				num_chars += 1;
+			}
+		}
 	
+		/* check if the letter count requirements are met */
+		if num_chars >= min && num_chars <= max {
+			valid_count += 1;
+		}
+	}
+
+	/* report how many valid passwords we found */
+	println!("{} valid passwords found", valid_count);
 	Ok(())
 }
