@@ -25,8 +25,8 @@ fn main() -> io::Result<()> {
 
 	/* if sum of a triple of vals is 2020, print their product */
 	for (i, a) in vals.iter().enumerate() {
-		for (j, b) in vals[i+1..].iter().enumerate() {
-			for c in vals[j+1..].iter() {
+		for (j, b) in vals[(i+1)..].iter().enumerate() {
+			for c in vals[(j+1)+(i+1)..].iter() {
 				if a + b + c == 2020 {
 					println!("{} * {} * {} = {}", a, b, c, a * b * c);
 				}
