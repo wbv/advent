@@ -6,7 +6,7 @@ use std::io::{Read};
  * width `width` represented by the iterator across u8 slices of `lines` */
 fn count_trees(lines: &Vec<&[u8]>, width: usize, right: usize, down: usize)
                -> usize {
-	let trees =	lines
+	let trees = lines
 		.iter()
 		.step_by(down)
 		.enumerate()
@@ -42,6 +42,6 @@ fn main() -> io::Result<()> {
 		.fold(1, |acc, x| acc * x);
 
 	println!("Product of all paths is {}", product);
-	
+
 	Ok(())
 }
