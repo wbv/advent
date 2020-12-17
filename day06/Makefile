@@ -7,7 +7,7 @@ $(TARGET): $(wildcard src/*)
 	cargo build
 
 $(REL_TARGET): $(wildcard src/*)
-	cargo build
+	cargo build --release
 
 test: $(TARGET) ex.txt input.txt
 	cat ex.txt | ./$(TARGET)
