@@ -9,30 +9,44 @@ fn main() -> io::Result<()> {
 	// get a vector for all boarding pass strings in the input file
 	let passes: Vec<&str> = buf.split("\n").collect();
 
-	for pass in passes {
-		let id = match bsp_to_id(pass) {
-			Ok(val) => val,
-			Err(e)  => 0u16,
-		};
+	let mut pass_ids: Vec<u16> = passes
+		.iter()
+		.filter_map(|pass| bsp_to_id(pass).ok())
+		.collect();
+
+	match pass_ids.iter().max() {
+		Some(max) => println!("Max pass ID: {}", max),
+		None      => println!("No passes found"),
+	};
+
+	pass_ids.sort();
+
+	for (a, b) in pass_ids.iter().zip(pass_ids.iter().skip(1)) {
+		if *b == *a + 2 {
+			println!("Your pass is {}", *a + 1);
+			break;
+		}
 	}
 
 	return Ok(());
 }
 
 /// convert a BSP code to an ID
-fn bsp_to_id(pass: &str) -> Result<u16, String> {
-	let mut id = 0u16;
-	let mut chars = pass.chars();
-	for i in (3..10).rev() {
-		let dir = match chars.next().expect("String too short") {
-			'B' => Ok(2_u16.pow(i)),
-			'F' => Ok(0),
-			_   => Err("Bad dir"),
-		};
-
-		id += dir?;
+fn bsp_to_id(pass: &str) -> Result<u16, &str> {
+	if pass.len() < 10 {
+		return Err("String too short");
 	}
 
-	println!("{}", id);
+	let mut id = 0u16;
+	let mut chars = pass.chars();
+
+	for i in (0..10).rev() {
+		id += match chars.next().unwrap() {
+			'B'|'R'=> Ok(2_u16.pow(i)),
+			'F'|'L'=> Ok(0),
+			_      => Err("Bad direction"),
+		}?;
+	}
+
 	return Ok(id);
 }
