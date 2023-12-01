@@ -1,0 +1,10 @@
+[package]
+name = "day01"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.4.10", features = ["derive"] }
+clio = { version = "0.3.4", features = ["clap", "clap-parse"] }
+env_logger = "0.10.1"
+log = { version = "0.4.20", features = ["std", "release_max_level_warn"] }
