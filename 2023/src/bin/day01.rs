@@ -78,8 +78,8 @@ fn solve_part2<B: BufRead>(input: B) -> std::io::Result<()> {
 
     let mut lines = input.lines();
     while let Some(Ok(line)) = lines.next() {
-        let first = find_first_numeral(line.as_str());
-        let last = find_last_numeral(line.as_str());
+        let first = find_first_numeral(&line);
+        let last = find_last_numeral(&line);
         match (first, last) {
             (Some(first), Some(last)) => {
                 let value = first.val * 10 + last.val;
@@ -100,9 +100,7 @@ fn solve_part2<B: BufRead>(input: B) -> std::io::Result<()> {
     Ok(())
 }
 
-const PAIRS: [(usize, &str); 20] = [
-    (0, "zero"),
-    (0, "0"),
+const PAIRS: [(usize, &str); 18] = [
     (1, "one"),
     (1, "1"),
     (2, "two"),
@@ -130,7 +128,7 @@ struct Finding {
     val: usize,
 }
 
-fn find_first_numeral(line: &str) -> Option<Finding> {
+fn find_first_numeral(line: &String) -> Option<Finding> {
     let mut numeral: Option<Finding> = None;
 
     debug!("FORWARD SEARCH of '{line}'");
@@ -144,7 +142,7 @@ fn find_first_numeral(line: &str) -> Option<Finding> {
                         val: textvalue,
                     });
                 }
-                Some(p) if p.idx < position => {
+                Some(p) if p.idx > position => {
                     debug!("Found text '{text:?}' at {position}");
                     numeral = Some(Finding {
                         idx: position,
@@ -159,7 +157,7 @@ fn find_first_numeral(line: &str) -> Option<Finding> {
     numeral
 }
 
-fn find_last_numeral(line: &str) -> Option<Finding> {
+fn find_last_numeral(line: &String) -> Option<Finding> {
     let mut numeral: Option<Finding> = None;
 
     debug!("REVERSE SEARCH of '{line}'");
@@ -173,7 +171,7 @@ fn find_last_numeral(line: &str) -> Option<Finding> {
                         val: textvalue,
                     });
                 }
-                Some(p) if p.idx > position => {
+                Some(p) if p.idx < position => {
                     debug!("Found text '{text:?}' at {position}");
                     numeral = Some(Finding {
                         idx: position,
