@@ -67,6 +67,7 @@ dependencies = [
  "clio",
  "env_logger",
  "log",
+ "regex",
 ]
 
 [[package]]

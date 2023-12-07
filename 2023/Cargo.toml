@@ -10,3 +10,4 @@ clap = { version = "4.4.11", features = ["derive"] }
 clio = { version = "0.3.4", features = ["clap", "clap-parse"] }
 env_logger = "0.10.1"
 log = { version = "0.4.20", features = ["std"] }
+regex = "1.10.2"
