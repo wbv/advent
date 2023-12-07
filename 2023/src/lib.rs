@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+pub mod day01;
+
 pub use clap::{Parser, Subcommand};
 pub use log::*;
 
