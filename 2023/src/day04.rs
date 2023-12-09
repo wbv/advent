@@ -27,7 +27,7 @@ use regex::Regex;
 
 use super::*;
 
-use std::{io::BufRead, collections::HashSet};
+use std::{io::BufRead, collections::HashSet, iter::repeat};
 
 /// # Winning Numbers
 ///
@@ -73,7 +73,6 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
     let mut lines = input.lines();
     while let Some(Ok(line)) = lines.next() {
         let (_, line) = line.split_once(':').unwrap();
-        debug!("have line: {}", line);
         let mut line = line.split(|ch| ch == '|');
         let (winning, ours) = (line.next().unwrap(), line.next().unwrap());
         let winning: HashSet<_> = re.find_iter(winning)
@@ -137,5 +136,33 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
 /// Process all of the original and copied scratchcards until no more scratchcards are won.
 /// Including the original set of scratchcards, how many total scratchcards do you end up with?
 pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<usize> {
-    unimplemented!()
+    let mut matchlist = vec![];
+    let re = Regex::new("[0-9]+").unwrap();
+
+    let mut lines = input.lines();
+    while let Some(Ok(line)) = lines.next() {
+        let (_, line) = line.split_once(':').unwrap();
+        let mut line = line.split(|ch| ch == '|');
+        let (winning, ours) = (line.next().unwrap(), line.next().unwrap());
+        let winning: HashSet<_> = re.find_iter(winning)
+            .map(|x| usize::from_str_radix(x.as_str(), 10).unwrap())
+            .collect();
+        let ours: HashSet<_> = re.find_iter(ours)
+            .map(|x| usize::from_str_radix(x.as_str(), 10).unwrap())
+            .collect();
+
+        let num_matches = winning.intersection(&ours).count();
+        matchlist.push(num_matches);
+    }
+
+    let mut cardcounts: Vec<_> = repeat(1).take(matchlist.len()).collect();
+    for i in 0..matchlist.len() {
+        debug!("At index {} we copy {} next cards", i + 1, matchlist[i]);
+        for j in (i + 1)..=(i + matchlist[i]) {
+            debug!("(copy card {}, {} times)", j + 1, cardcounts[i]);
+            cardcounts[j] += cardcounts[i];
+        }
+        debug!("cardcounts = {:?}", cardcounts);
+    }
+    Ok(cardcounts.iter().sum())
 }
