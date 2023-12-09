@@ -28,6 +28,35 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
     Ok(min_loc.unwrap())
 }
 
+pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<isize> {
+    let mut lines = input.lines();
+
+    // list of seeds
+    let seeds = lines.next().unwrap().unwrap()
+        .split_once(':').unwrap().1
+        .split_whitespace()
+        .map(|word| isize::from_str_radix(word, 10).unwrap())
+        .collect::<Vec<_>>();
+    let seeds = seeds.as_slice().chunks(2)
+        .collect::<Vec<_>>();
+    debug!("Seeds: {:?}", seeds);
+
+    lines.next(); // skip empty line
+
+    let almanac = Almanac::from_lines(&mut lines);
+
+    let min_loc = seeds.iter()
+        .map(|&range| {
+            debug_assert_eq!(range.len(), 2);
+            range[0]..(range[0] + range[1])
+        })
+        .flatten()
+        .map(|s| almanac.get_loc(s))
+        .reduce(|acc, loc| acc.min(loc));
+
+    Ok(min_loc.unwrap())
+}
+
 #[derive(Debug)]
 struct Offset {
     start: isize,
