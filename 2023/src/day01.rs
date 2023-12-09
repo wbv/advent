@@ -13,8 +13,6 @@
 
 #![cfg(not(doctest))]
 
-use std::io::BufRead;
-
 use super::*;
 
 /// Reading Digits

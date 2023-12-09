@@ -15,9 +15,6 @@
 //! and your goal is to figure out information about the number of cubes.
 
 use super::*;
-
-use std::io::BufRead;
-
 use regex::Regex;
 
 /// # Possible Games

@@ -23,11 +23,9 @@
 //! I'll let you borrow my boat and you can go visit the gardener. I got all these scratchcards as
 //! a gift, but I can't figure out what I've won."
 
-use regex::Regex;
-
 use super::*;
-
-use std::{io::BufRead, collections::HashSet, iter::repeat};
+use std::{collections::HashSet, iter::repeat};
+use regex::Regex;
 
 /// # Winning Numbers
 ///

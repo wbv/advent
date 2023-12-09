@@ -13,9 +13,9 @@
 //! wasn't expecting anyone! The gondola lift isn't working right now; it'll still be a while
 //! before I can fix it." You offer to help.
 
+use super::*;
+use std::{collections::HashMap, iter::repeat};
 use regex::bytes::Regex;
-
-use std::{io::BufRead, collections::HashMap, iter::repeat};
 
 /// # Symbol Locality
 ///
