@@ -21,16 +21,16 @@ fn example1() {
     assert_eq!(answer, 35);
 }
 
-//#[test]
-//fn part1() {
-//    log_init();
-//
-//    let input = get_reader("inputs/day04/part1.txt");
-//    let answer = solve_part1(input)
-//        .expect("failed to get a solution");
-//    assert_eq!(answer, 20667);
-//}
-//
+#[test]
+fn part1() {
+    log_init();
+
+    let input = get_reader("inputs/day05/part1.txt");
+    let answer = solve_part1(input)
+        .expect("failed to get a solution");
+    assert_eq!(answer, 382895070);
+}
+
 //#[test]
 //fn example2() {
 //    log_init();
