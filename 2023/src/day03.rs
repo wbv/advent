@@ -17,7 +17,7 @@ use regex::bytes::{Regex, Match};
 
 use super::*;
 
-use std::io::BufRead;
+use std::{io::BufRead, collections::HashMap, iter::repeat};
 
 /// # Symbol Locality
 ///
@@ -52,30 +52,99 @@ use std::io::BufRead;
 /// Of course, the actual engine schematic is much larger. What is the sum of all of the part
 /// numbers in the engine schematic?
 pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
+    let sch = Schematic::from_bufread(input);
+    debug!("ALL_NUMS: {:?}", sch.all_nums.iter().map(|x| x.value).sum::<usize>());
+    let sum = sch.all_nums.iter()
+        .filter(|&num| {
+            debug!("pre-filter num: {num:?}");
+            num.near_symbol
+        })
+        .map(|num| {
+            debug!("mapped num.value: {}", num.value);
+            num.value
+        })
+        .sum();
+    Ok(sum)
+}
+
+/// --- Part Two ---
+///
+/// The engineer finds the missing part and installs it in the engine! As the engine springs to
+/// life, you jump in the closest gondola, finally ready to ascend to the water source.
+///
+/// You don't seem to be going very fast, though. Maybe something is still wrong? Fortunately, the
+/// gondola has a phone labeled "help", so you pick it up and the engineer answers.
+///
+/// Before you can explain the situation, she suggests that you look out the window. There stands
+/// the engineer, holding a phone in one hand and waving with the other. You're going so slowly
+/// that you haven't even left the station. You exit the gondola.
+///
+/// The missing part wasn't the only issue - one of the gears in the engine is wrong. A gear is any
+/// `*` symbol that is adjacent to exactly two part numbers. Its gear ratio is the result of
+/// multiplying those two numbers together.
+///
+/// This time, you need to find the gear ratio of every gear and add them all up so that the
+/// engineer can figure out which gear needs to be replaced.
+///
+/// Consider the same engine schematic again:
+///
+/// ```
+/// 467..114..
+/// ...*......
+/// ..35..633.
+/// ......#...
+/// 617*......
+/// .....+.58.
+/// ..592.....
+/// ......755.
+/// ...$.*....
+/// .664.598..
+/// ```
+///
+/// In this schematic, there are two gears. The first is in the top left; it has part numbers 467
+/// and 35, so its gear ratio is 16345. The second gear is in the lower right; its gear ratio is
+/// 451490. (The `*` adjacent to 617 is not a gear because it is only adjacent to one part number.)
+/// Adding up all of the gear ratios produces 467835.
+///
+/// What is the sum of all of the gear ratios in your engine schematic?
+pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<usize> {
     let mut sum = 0;
 
     let sch = Schematic::from_bufread(input);
     let re = Regex::new("[0-9]+").unwrap();
-    for num in re.find_iter(&sch.flat_map) {
-        debug!("match: {:?}", String::from_utf8(num.as_bytes().to_owned()));
-        let neighbors = sch.neighbors(num);
-        debug!("neigbors: {:?}", String::from_utf8(neighbors.clone()));
-
-        if neighbors.iter().any(|&c| c != b'.') {
-            sum += String::from_utf8(num.as_bytes().to_owned()).unwrap()
-                .parse::<usize>().unwrap();
-        }
-    }
 
     Ok(sum)
 }
+
 
 #[derive(Default, Debug)]
 struct Schematic {
     flat_map: Vec<u8>,
     width: usize,
     height: usize,
+    all_nums: Vec<Number>,
+    gears: HashMap<Coordinate, Gear>,
 }
+
+#[derive(Copy, Clone, Debug)]
+struct Coordinate {
+    x: isize,
+    y: isize,
+}
+
+#[derive(Debug)]
+struct Number {
+    coords: Vec<Coordinate>,
+    value: usize,
+    near_symbol: bool,
+}
+
+#[derive(Debug)]
+struct Gear {
+    coords: Vec<Coordinate>,
+    nums: Vec<Number>,
+}
+
 
 impl Schematic {
     pub fn from_bufread<B: BufRead>(buf: B) -> Self {
@@ -91,10 +160,46 @@ impl Schematic {
 
         debug!("Total lines: {}", schematic.height);
         debug_assert_eq!(schematic.width * schematic.height, schematic.flat_map.len());
+
+        let re = Regex::new("[0-9]+").unwrap();
+        for num in re.find_iter(&schematic.flat_map) {
+            debug!("match: {:?}", String::from_utf8(num.as_bytes().to_owned()));
+
+            let start_x = (num.start() % schematic.width) as isize;
+            let end_x = (num.end() % schematic.width) as isize;
+            let y = (num.start() / schematic.width) as isize;
+            debug!("col (x) range: {start_x} to {end_x} | row (y): {y}");
+
+            let toprow = ((start_x - 1)..=(end_x)).zip(repeat(y - 1));
+            let middle = [(start_x - 1, y), (end_x, y)].into_iter();
+            let bottom = ((start_x - 1)..=(end_x)).zip(repeat(y + 1));
+            let neighbors = toprow.chain(middle).chain(bottom);
+
+            debug!("NEIGHBORS: {:?}", neighbors.clone().collect::<Vec<_>>());
+
+            let coords = (start_x..end_x).zip(repeat(y))
+                .map(|(x, y)| Coordinate { x, y })
+                .collect::<Vec<_>>();
+            let near_symbol = neighbors.clone()
+                .any(|(x, y)| {
+                    debug!("symbol_check: ({x}, {y}) => {}", String::from_utf8(vec![schematic.at(x, y)]).unwrap());
+                    schematic.at(x, y) != b'.'
+                });
+            let value = String::from_utf8(num.as_bytes().to_owned())
+                .unwrap()
+                .parse::<usize>()
+                .unwrap();
+
+            debug!("so {} near_symbol = {}", value, near_symbol);
+
+            schematic.all_nums.push(Number { coords, value, near_symbol});
+        }
+
         schematic
     }
 
     fn at(&self, x: isize, y: isize) -> u8 {
+        // bounds check x and y (out-of-bounds = default value of b'.')
         if x >= 0 && y >= 0 {
             let x = x as usize;
             let y = y as usize;
@@ -104,26 +209,30 @@ impl Schematic {
         }
     }
 
-    fn at_idx(&self, at: usize) -> u8 {
-        let x = at % self.width;
-        let y = at / self.width;
-        self.at(x as isize, y as isize)
-    }
+    //fn at_idx(&self, at: usize) -> u8 {
+    //    let x = at % self.width;
+    //    let y = at / self.width;
+    //    self.at(x as isize, y as isize)
+    //}
 
     fn neighbors(&self, pt: Match) -> Vec<u8> {
         let mut neighbors = vec![];
-        let (start_x, start_y) = ((pt.start() % self.width) as isize, (pt.start() / self.width) as isize);
-        let (end_x, end_y) = ((pt.end() % self.width) as isize, (pt.end() / self.width) as isize);
-        debug!("start: {start_x}, {start_y}   end: {end_x}, {end_y}");
+
+        let start_x = (pt.start() % self.width) as isize;
+        let end_x = (pt.end() % self.width) as isize;
+        let y = (pt.start() / self.width) as isize;
+        debug!("col (x) range: {start_x} to {end_x} | row (y): {y}");
+
+        // collect neighboring bytes into a vector, one at a time
         for x in (start_x - 1)..=(end_x) {
             // row above
-            neighbors.push(self.at(x, start_y - 1));
+            neighbors.push(self.at(x, y - 1));
             // row below
-            neighbors.push(self.at(x, start_y + 1));
+            neighbors.push(self.at(x, y + 1));
         }
         // left and right neighbors
-        neighbors.push(self.at(start_x - 1, start_y));
-        neighbors.push(self.at(end_x, start_y));
+        neighbors.push(self.at(start_x - 1, y));
+        neighbors.push(self.at(end_x, y));
 
         neighbors
     }
