@@ -13,7 +13,7 @@
 //! wasn't expecting anyone! The gondola lift isn't working right now; it'll still be a while
 //! before I can fix it." You offer to help.
 
-use regex::bytes::{Regex, Match};
+use regex::bytes::Regex;
 
 use super::*;
 
@@ -53,16 +53,9 @@ use std::{io::BufRead, collections::HashMap, iter::repeat};
 /// numbers in the engine schematic?
 pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
     let sch = Schematic::from_bufread(input);
-    debug!("ALL_NUMS: {:?}", sch.all_nums.iter().map(|x| x.value).sum::<usize>());
     let sum = sch.all_nums.iter()
-        .filter(|&num| {
-            debug!("pre-filter num: {num:?}");
-            num.near_symbol
-        })
-        .map(|num| {
-            debug!("mapped num.value: {}", num.value);
-            num.value
-        })
+        .filter(|&num| num.near_symbol)
+        .map(|num| num.value)
         .sum();
     Ok(sum)
 }
@@ -108,14 +101,13 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
 ///
 /// What is the sum of all of the gear ratios in your engine schematic?
 pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<usize> {
-    let mut sum = 0;
-
     let sch = Schematic::from_bufread(input);
-    let re = Regex::new("[0-9]+").unwrap();
-
+    let sum = sch.gears.values()
+        .filter(|g| g.nums.len() == 2)
+        .map(|g| g.nums[0].value * g.nums[1].value)
+        .sum();
     Ok(sum)
 }
-
 
 #[derive(Default, Debug)]
 struct Schematic {
@@ -126,73 +118,76 @@ struct Schematic {
     gears: HashMap<Coordinate, Gear>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 struct Coordinate {
     x: isize,
     y: isize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Number {
-    coords: Vec<Coordinate>,
     value: usize,
     near_symbol: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct Gear {
-    coords: Vec<Coordinate>,
     nums: Vec<Number>,
 }
 
 
 impl Schematic {
     pub fn from_bufread<B: BufRead>(buf: B) -> Self {
-        let mut lines = buf.lines();
         let mut schematic = Schematic::default();
+        let mut lines = buf.lines();
         while let Some(Ok(line)) = lines.next() {
             let line = line.as_bytes().to_vec();
-            debug!("Read line of {} bytes", line.len());
             schematic.width = schematic.width.max(line.len());
             schematic.height += 1;
             schematic.flat_map = [schematic.flat_map, line].concat();
         }
 
-        debug!("Total lines: {}", schematic.height);
+        // verify that our computed dimensions represent our data as a rectangle
         debug_assert_eq!(schematic.width * schematic.height, schematic.flat_map.len());
 
+        // find each number in the file
         let re = Regex::new("[0-9]+").unwrap();
         for num in re.find_iter(&schematic.flat_map) {
-            debug!("match: {:?}", String::from_utf8(num.as_bytes().to_owned()));
-
+            // compute coordinates of the found number
             let start_x = (num.start() % schematic.width) as isize;
             let end_x = (num.end() % schematic.width) as isize;
             let y = (num.start() / schematic.width) as isize;
-            debug!("col (x) range: {start_x} to {end_x} | row (y): {y}");
 
+            // compute coordinates of all of its neighbors
             let toprow = ((start_x - 1)..=(end_x)).zip(repeat(y - 1));
             let middle = [(start_x - 1, y), (end_x, y)].into_iter();
             let bottom = ((start_x - 1)..=(end_x)).zip(repeat(y + 1));
             let neighbors = toprow.chain(middle).chain(bottom);
 
-            debug!("NEIGHBORS: {:?}", neighbors.clone().collect::<Vec<_>>());
-
-            let coords = (start_x..end_x).zip(repeat(y))
-                .map(|(x, y)| Coordinate { x, y })
-                .collect::<Vec<_>>();
+            // determine whether it's next to a symbol
             let near_symbol = neighbors.clone()
-                .any(|(x, y)| {
-                    debug!("symbol_check: ({x}, {y}) => {}", String::from_utf8(vec![schematic.at(x, y)]).unwrap());
-                    schematic.at(x, y) != b'.'
-                });
+                .any(|(x, y)| schematic.at(x, y) != b'.');
+            // and save its integral value
             let value = String::from_utf8(num.as_bytes().to_owned())
                 .unwrap()
                 .parse::<usize>()
                 .unwrap();
 
-            debug!("so {} near_symbol = {}", value, near_symbol);
+            // check for gears in its neighborhood
+            let number = Number { value, near_symbol};
+            let gears: Vec<_> = neighbors.filter(|(x, y)| schematic.at(*x, *y) == b'*').collect();
+            for (x, y) in gears {
+                // add it to the list of that gear's neighboring numbers (for the gear that we found)
+                let coord = Coordinate { x, y };
+                if schematic.gears.contains_key(&coord) {
+                    schematic.gears.entry(coord).and_modify(|g| g.nums.push(number.clone()));
+                } else {
+                    schematic.gears.insert(coord, Gear { nums: vec![number.clone()] });
+                }
+            }
 
-            schematic.all_nums.push(Number { coords, value, near_symbol});
+            // store the parsed number and its attributes
+            schematic.all_nums.push(number);
         }
 
         schematic
@@ -207,33 +202,5 @@ impl Schematic {
         } else {
             b'.'
         }
-    }
-
-    //fn at_idx(&self, at: usize) -> u8 {
-    //    let x = at % self.width;
-    //    let y = at / self.width;
-    //    self.at(x as isize, y as isize)
-    //}
-
-    fn neighbors(&self, pt: Match) -> Vec<u8> {
-        let mut neighbors = vec![];
-
-        let start_x = (pt.start() % self.width) as isize;
-        let end_x = (pt.end() % self.width) as isize;
-        let y = (pt.start() / self.width) as isize;
-        debug!("col (x) range: {start_x} to {end_x} | row (y): {y}");
-
-        // collect neighboring bytes into a vector, one at a time
-        for x in (start_x - 1)..=(end_x) {
-            // row above
-            neighbors.push(self.at(x, y - 1));
-            // row below
-            neighbors.push(self.at(x, y + 1));
-        }
-        // left and right neighbors
-        neighbors.push(self.at(start_x - 1, y));
-        neighbors.push(self.at(end_x, y));
-
-        neighbors
     }
 }

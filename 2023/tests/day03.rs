@@ -31,13 +31,22 @@ fn part1() {
     assert_eq!(answer, 556057);
 }
 
-//#[test]
-//fn example2() {
-//    log_init();
-//
-//    let input = get_reader("inputs/day03/example.txt");
-//    let answer = solve_part2(input)
-//        .expect("failed to get a solution");
-//    assert_eq!(answer, 467835);
-//}
+#[test]
+fn example2() {
+    log_init();
 
+    let input = get_reader("inputs/day03/example.txt");
+    let answer = solve_part2(input)
+        .expect("failed to get a solution");
+    assert_eq!(answer, 467835);
+}
+
+#[test]
+fn part2() {
+    log_init();
+
+    let input = get_reader("inputs/day03/part2.txt");
+    let answer = solve_part2(input)
+        .expect("failed to get a solution");
+    assert_eq!(answer, 82824352);
+}
