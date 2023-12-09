@@ -15,8 +15,6 @@
 
 use regex::bytes::Regex;
 
-use super::*;
-
 use std::{io::BufRead, collections::HashMap, iter::repeat};
 
 /// # Symbol Locality
