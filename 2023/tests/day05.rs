@@ -41,7 +41,7 @@ fn example2() {
     assert_eq!(answer, 46);
 }
 
-#[test] #[ignore] // very slow, skip by default
+#[test]
 fn part2() {
     log_init();
 
