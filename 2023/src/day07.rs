@@ -25,7 +25,7 @@
 //! You've already assumed it'll be your job to figure out why the parts stopped when she asks if
 //! you can help. You agree automatically.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, BinaryHeap};
 
 use super::*;
 
@@ -97,26 +97,30 @@ use super::*;
 ///
 /// Find the rank of every hand in your set. What are the total winnings?
 pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
-    let mut lines = input.lines();
+    let hands = input.lines().into_iter()
+        .map(|l| Hand::new(l.unwrap()))
+        .collect::<BinaryHeap<_>>()
+        .into_sorted_vec();
 
-    let mut hands = vec![];
-    while let Some(Ok(line)) = lines.next() {
-        hands.push(Hand::new(line));
-    }
+    let winnings = hands.iter().enumerate()
+        .map(|(rank, hand)| {
+            let rank = rank as isize + 1;
+            let cards = String::from_utf8(hand.cards.to_vec()).unwrap();
+            debug!("{rank} : {} bets {}", cards, hand.bet);
+            rank * hand.bet
+        })
+        .sum();
 
-    debug!("Hands: {:?}", hands);
-
-    Ok(2)
+    Ok(winnings)
 }
 
 pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<isize> {
-    let mut lines = input.lines();
-
-    unimplemented!()
+    let _ = input.lines();
+    todo!()
 }
 
-#[derive(PartialOrd, PartialEq, Eq, Debug)]
-enum Rank {
+#[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
+enum Strength {
     HighCard,
     OnePair,
     TwoPair,
@@ -126,10 +130,10 @@ enum Rank {
     FiveKind
 }
 
-#[derive(Eq)]
 struct Hand {
     cards: [u8; 5],
     bet: isize,
+    strength: Strength,
 }
 
 impl Hand {
@@ -137,22 +141,35 @@ impl Hand {
         let line = line.as_ref()
             .split_whitespace()
             .collect::<Vec<_>>();
-        let (cards, bet) = (line[0].as_bytes(), isize::from_str_radix(line[1], 10).unwrap());
-        let cards: [u8; 5] = line[0].as_bytes().try_into().unwrap();
-        Hand { cards, bet }
+        let cards = line[0].as_bytes().try_into().unwrap();
+        let bet = isize::from_str_radix(line[1], 10).unwrap();
+        let strength = Hand::strength(&cards);
+        Hand { cards, bet, strength }
     }
 
-    pub fn get_rank(&self) -> Rank {
-        let opts = b"AKQJT98765432";
-        let mut counts: HashMap<u8, isize> = HashMap::new();
-        for op in opts {
-            match counts.get(op) {
-                Some(cnt) => counts.insert(*op, cnt + 1),
-                None => counts.insert(*op, 1),
+    pub fn strength(cards: &[u8; 5]) -> Strength {
+        let mut counts: HashMap<char, isize> = HashMap::new();
+        for card in String::from_utf8(cards.to_vec()).unwrap().as_str().chars() {
+            match counts.get(&card) {
+                Some(cnt) => counts.insert(card, cnt + 1),
+                None => counts.insert(card, 1),
             };
         }
 
-        Rank::HighCard
+        let mut counts = counts.iter()
+            .map(|(_, count)| *count)
+            .collect::<BinaryHeap<_>>();
+
+        let strength = match (counts.pop(), counts.pop()) {
+            (Some(5), _)       => Strength::FiveKind,
+            (Some(4), _)       => Strength::FourKind,
+            (Some(3), Some(2)) => Strength::FullHouse,
+            (Some(3), _)       => Strength::ThreeKind,
+            (Some(2), Some(2)) => Strength::TwoPair,
+            (Some(2), _)       => Strength::OnePair,
+            _                  => Strength::HighCard,
+        };
+        strength
     }
 }
 
@@ -161,25 +178,54 @@ impl std::fmt::Debug for Hand {
         let cards = String::from_utf8(self.cards.to_vec()).unwrap();
         f.debug_struct("Hand")
             .field("cards", &cards.as_str())
+            .field("strength", &self.strength)
             .field("bet", &self.bet)
             .finish()
     }
 }
 
-//impl std::cmp::PartialOrd for Hand {
-//    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-//        None
-//    }
-//}
-
 impl std::cmp::PartialEq for Hand {
     fn eq(&self, other: &Self) -> bool {
-        false
+        self.cards == other.cards
     }
 }
 
-//impl std::cmp::Ord for Hand {
-//    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-//        std::cmp::Ordering::Equal
-//    }
-//}
+impl std::cmp::Eq for Hand {}
+
+const fn card_strength(card: &u8) -> isize {
+    match card {
+        b'A' => 12,
+        b'K' => 11,
+        b'Q' => 10,
+        b'J' => 9,
+        b'T' => 8,
+        b'9' => 7,
+        b'8' => 6,
+        b'7' => 5,
+        b'6' => 4,
+        b'5' => 3,
+        b'4' => 2,
+        b'3' => 1,
+        b'2' => 0,
+        _ => -1,
+    }
+}
+
+impl std::cmp::PartialOrd for Hand {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(&other))
+    }
+}
+
+impl std::cmp::Ord for Hand {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.strength.cmp(&other.strength) {
+            std::cmp::Ordering::Equal => {
+                let left = self.cards.iter().map(card_strength);
+                let right = other.cards.iter().map(card_strength);
+                left.cmp(right)
+            }
+            order => order
+        }
+    }
+}
