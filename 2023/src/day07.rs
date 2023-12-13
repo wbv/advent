@@ -25,10 +25,12 @@
 //! You've already assumed it'll be your job to figure out why the parts stopped when she asks if
 //! you can help. You agree automatically.
 
-use std::collections::{HashMap, BinaryHeap};
+use std::collections::BinaryHeap;
 
 use super::*;
 
+/// # Winnings
+///
 /// Because the journey will take a few days, she offers to teach you the game of Camel Cards.
 /// Camel Cards is sort of similar to poker except it's designed to be easier to play while riding
 /// a camel.
@@ -97,26 +99,64 @@ use super::*;
 ///
 /// Find the rank of every hand in your set. What are the total winnings?
 pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
+    get_winnings(input, RuleSet::Standard)
+}
+
+/// # Jokers
+///
+/// To make things a little more interesting, the Elf introduces one additional rule. Now, J cards
+/// are jokers - wildcards that can act like whatever card would make the hand the strongest type
+/// possible.
+///
+/// To balance this, J cards are now the weakest individual cards, weaker even than 2. The other
+/// cards stay in the same order: A, K, Q, T, 9, 8, 7, 6, 5, 4, 3, 2, J.
+///
+/// J cards can pretend to be whatever card is best for the purpose of determining hand type; for
+/// example, QJJQ2 is now considered four of a kind. However, for the purpose of breaking ties
+/// between two hands of the same type, J is always treated as J, not the card it's pretending to
+/// be: JKKK2 is weaker than QQQQ2 because J is weaker than Q.
+///
+/// Now, the above example goes very differently:
+///
+/// ```
+/// 32T3K 765
+/// T55J5 684
+/// KK677 28
+/// KTJJT 220
+/// QQQJA 483
+/// ```
+///
+/// - 32T3K is still the only one pair; it doesn't contain any jokers, so its strength doesn't
+///   increase.
+/// - KK677 is now the only two pair, making it the second-weakest hand.
+/// - T55J5, KTJJT, and QQQJA are now all four of a kind! T55J5 gets rank 3, QQQJA gets rank 4, and
+///   KTJJT gets rank 5.
+///
+/// With the new joker rule, the total winnings in this example are 5905.
+///
+/// Using the new joker rule, find the rank of every hand in your set. What are the new total
+/// winnings?
+///
+pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<isize> {
+    get_winnings(input, RuleSet::Joker)
+}
+
+fn get_winnings<B: BufRead>(input: B, rules: RuleSet) -> std::io::Result<isize> {
     let hands = input.lines().into_iter()
-        .map(|l| Hand::new(l.unwrap()))
+        .map(|l| Hand::new(l.unwrap(), rules))
         .collect::<BinaryHeap<_>>()
         .into_sorted_vec();
 
     let winnings = hands.iter().enumerate()
         .map(|(rank, hand)| {
             let rank = rank as isize + 1;
-            let cards = String::from_utf8(hand.cards.to_vec()).unwrap();
-            debug!("{rank} : {} bets {}", cards, hand.bet);
+            let cards = String::from_utf8(hand.cards.0.to_vec()).unwrap();
+            debug!("{rank:4} : {} bets {:4} ({:?})", cards, hand.bet, hand.strength);
             rank * hand.bet
         })
         .sum();
 
     Ok(winnings)
-}
-
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<isize> {
-    let _ = input.lines();
-    todo!()
 }
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
@@ -130,57 +170,107 @@ enum Strength {
     FiveKind
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum RuleSet {
+    Standard,
+    Joker
+}
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+struct Cards([u8; 5]);
+
+impl TryFrom<&[u8]> for Cards {
+    type Error = ();
+    fn try_from(other: &[u8]) -> Result<Self, Self::Error> {
+        match other.try_into() {
+            Ok(cards) => Ok(Cards(cards)),
+            Err(_) => Err(()),
+        }
+    }
+}
+
+impl TryFrom<&str> for Cards {
+    type Error = ();
+    fn try_from(other: &str) -> Result<Self, Self::Error> {
+        Cards::try_from(other.as_bytes())
+    }
+}
+
 struct Hand {
-    cards: [u8; 5],
+    cards: Cards,
     bet: isize,
     strength: Strength,
+    rules: RuleSet,
 }
 
 impl Hand {
-    pub fn new<L: AsRef<str>>(line: L) -> Self {
+    pub fn new<L: AsRef<str>>(line: L, rules: RuleSet) -> Self {
         let line = line.as_ref()
             .split_whitespace()
             .collect::<Vec<_>>();
-        let cards = line[0].as_bytes().try_into().unwrap();
+        let cards: Cards = line[0].try_into().unwrap();
         let bet = isize::from_str_radix(line[1], 10).unwrap();
-        let strength = Hand::strength(&cards);
-        Hand { cards, bet, strength }
+        let strength = Hand::strength(&cards, rules);
+        Hand { cards, bet, strength, rules }
     }
 
-    pub fn strength(cards: &[u8; 5]) -> Strength {
-        let mut counts: HashMap<char, isize> = HashMap::new();
-        for card in String::from_utf8(cards.to_vec()).unwrap().as_str().chars() {
-            match counts.get(&card) {
-                Some(cnt) => counts.insert(card, cnt + 1),
-                None => counts.insert(card, 1),
-            };
+    pub fn strength(cards: &Cards, rules: RuleSet) -> Strength {
+        debug!("HAND: {}", cards.0.iter().map(|&c| c as char).collect::<String>());
+        let mut unique = cards.0.to_vec();
+        unique.sort_by(|a, b| card_strength(a, rules).cmp(&card_strength(b, rules)));
+        unique.dedup();
+        debug!("unique: {}", unique.iter().map(|&c| c as char).collect::<String>());
+
+        let mut counts = unique.iter()
+            .filter_map(|&c| match cards.0.iter().filter(|&&ch| ch == c).count() {
+                0 => None,
+                x => Some((c, x)),
+            })
+            .collect::<Vec<_>>();
+        debug!("counts: {:?}", counts.iter().map(|(ch, cnt)| format!("{}: {}", *ch as char, cnt)).collect::<Vec<_>>());
+
+        if rules == RuleSet::Joker {
+            let jokers = counts.iter()
+                .find(|&&(c, _)| c == b'J')
+                .map_or(0, |&(_, cnt)| cnt);
+            counts.retain(|&(c, _)| c != b'J');
+            debug!("*count: {:?} ({jokers} jokers)", counts.iter().map(|(ch, cnt)| format!("{}: {}", *ch as char, cnt)).collect::<Vec<_>>());
+
+            // re-sort to obtain largest counts
+            let mut counts = counts.iter()
+                .map(|&(_, cnt)| cnt)
+                .collect::<Vec<_>>();
+            counts.sort();
+            let most = counts.pop();
+            let nextmost = counts.pop();
+            hand_strength_joker(jokers, most, nextmost)
+        } else {
+            let mut counts = counts.iter()
+                .map(|&(_, cnt)| cnt)
+                .collect::<Vec<_>>();
+            counts.sort();
+            let most = counts.pop();
+            let nextmost = counts.pop();
+            hand_strength_standard(most, nextmost)
         }
-
-        let mut counts = counts.iter()
-            .map(|(_, count)| *count)
-            .collect::<BinaryHeap<_>>();
-
-        let strength = match (counts.pop(), counts.pop()) {
-            (Some(5), _)       => Strength::FiveKind,
-            (Some(4), _)       => Strength::FourKind,
-            (Some(3), Some(2)) => Strength::FullHouse,
-            (Some(3), _)       => Strength::ThreeKind,
-            (Some(2), Some(2)) => Strength::TwoPair,
-            (Some(2), _)       => Strength::OnePair,
-            _                  => Strength::HighCard,
-        };
-        strength
     }
 }
 
 impl std::fmt::Debug for Hand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let cards = String::from_utf8(self.cards.to_vec()).unwrap();
         f.debug_struct("Hand")
-            .field("cards", &cards.as_str())
+            .field("cards", &self.cards)
             .field("strength", &self.strength)
             .field("bet", &self.bet)
+            .field("rules", &self.rules)
             .finish()
+    }
+}
+
+impl std::fmt::Debug for Cards {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let cards = String::from_utf8(self.0.to_vec()).unwrap();
+        write!(f, "{}", cards.as_str())
     }
 }
 
@@ -191,26 +281,6 @@ impl std::cmp::PartialEq for Hand {
 }
 
 impl std::cmp::Eq for Hand {}
-
-const fn card_strength(card: &u8) -> isize {
-    match card {
-        b'A' => 12,
-        b'K' => 11,
-        b'Q' => 10,
-        b'J' => 9,
-        b'T' => 8,
-        b'9' => 7,
-        b'8' => 6,
-        b'7' => 5,
-        b'6' => 4,
-        b'5' => 3,
-        b'4' => 2,
-        b'3' => 1,
-        b'2' => 0,
-        _ => -1,
-    }
-}
-
 impl std::cmp::PartialOrd for Hand {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(&other))
@@ -221,11 +291,73 @@ impl std::cmp::Ord for Hand {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match self.strength.cmp(&other.strength) {
             std::cmp::Ordering::Equal => {
-                let left = self.cards.iter().map(card_strength);
-                let right = other.cards.iter().map(card_strength);
+                let left = self.cards.0.iter().map(|c| card_strength(c, self.rules));
+                let right = other.cards.0.iter().map(|c| card_strength(c, self.rules));
                 left.cmp(right)
             }
             order => order
         }
     }
 }
+
+const fn card_strength(card: &u8, rules: RuleSet) -> isize {
+    match card {
+        b'A' => 14,
+        b'K' => 13,
+        b'Q' => 12,
+        b'J' => match rules {
+            RuleSet::Standard => 11,
+            RuleSet::Joker => 1,
+        },
+        b'T' => 10,
+        b'9' => 9,
+        b'8' => 8,
+        b'7' => 7,
+        b'6' => 6,
+        b'5' => 5,
+        b'4' => 4,
+        b'3' => 3,
+        b'2' => 2,
+        _ => 0,
+    }
+}
+
+const fn hand_strength_standard(first: Option<usize>, second: Option<usize>) -> Strength {
+    match (first, second) {
+        (Some(5), _)       => Strength::FiveKind,
+        (Some(4), _)       => Strength::FourKind,
+        (Some(3), Some(2)) => Strength::FullHouse,
+        (Some(3), _)       => Strength::ThreeKind,
+        (Some(2), Some(2)) => Strength::TwoPair,
+        (Some(2), _)       => Strength::OnePair,
+        _                  => Strength::HighCard,
+    }
+}
+
+const fn hand_strength_joker(jokers: usize, first: Option<usize>, second: Option<usize>) -> Strength {
+    match (jokers, first, second) {
+        (_, Some(5), _)       => Strength::FiveKind,
+        (1, Some(4), _)       => Strength::FiveKind,
+        (2, Some(3), _)       => Strength::FiveKind,
+        (3, Some(2), _)       => Strength::FiveKind,
+        (4, Some(1), _)       => Strength::FiveKind,
+        (5, _, _)             => Strength::FiveKind,
+        (0, Some(4), _)       => Strength::FourKind,
+        (1, Some(3), _)       => Strength::FourKind,
+        (2, Some(2), _)       => Strength::FourKind,
+        (3, Some(1), _)       => Strength::FourKind,
+        (4, _, _)             => Strength::FourKind,
+        (0, Some(3), Some(2)) => Strength::FullHouse,
+        (1, Some(2), Some(2)) => Strength::FullHouse,
+        (3, _, _)             => Strength::FullHouse,
+        (0, Some(3), _)       => Strength::ThreeKind,
+        (1, Some(2), _)       => Strength::ThreeKind,
+        (2, Some(1), _)       => Strength::ThreeKind,
+        (0, Some(2), Some(2)) => Strength::TwoPair,
+        (2, _, _)             => Strength::TwoPair,
+        (0, Some(2), _)       => Strength::OnePair,
+        (1, Some(1), _)       => Strength::OnePair,
+        _                     => Strength::HighCard,
+    }
+}
+

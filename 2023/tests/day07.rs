@@ -21,18 +21,18 @@ fn part1() {
     assert_eq!(answer, 249748283);
 }
 
-#[test] #[ignore]
+#[test]
 fn example2() {
     log_init();
     let answer = solve_part2(get_input(DAY, "example"))
         .expect("failed to get a solution");
-    assert_eq!(answer, 0);
+    assert_eq!(answer, 5905);
 }
 
-#[test] #[ignore]
+#[test]
 fn part2() {
     log_init();
     let answer = solve_part2(get_input(DAY, "input"))
         .expect("failed to get a solution");
-    assert_eq!(answer, 0);
+    assert_eq!(answer, 248029057);
 }
