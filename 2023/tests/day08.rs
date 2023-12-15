@@ -10,7 +10,7 @@ fn example1() {
     log_init();
     let answer = solve_part1(get_input(DAY, "example"))
         .expect("failed to get a solution");
-    assert_eq!(answer, 0);
+    assert_eq!(answer, 2);
 }
 
 #[test]
@@ -18,29 +18,27 @@ fn example2() {
     log_init();
     let answer = solve_part1(get_input(DAY, "example2"))
         .expect("failed to get a solution");
-    assert_eq!(answer, 0);
+    assert_eq!(answer, 6);
 }
 
 #[test]
-#[ignore]
 fn part1() {
     log_init();
     let answer = solve_part1(get_input(DAY, "input"))
         .expect("failed to get a solution");
-    assert_eq!(answer, 0);
+    assert_eq!(answer, 16343);
 }
 
 #[test]
-#[ignore]
 fn example3() {
     log_init();
-    let answer = solve_part1(get_input(DAY, "example"))
+    let answer = solve_part2(get_input(DAY, "example3"))
         .expect("failed to get a solution");
-    assert_eq!(answer, 0);
+    assert_eq!(answer, 6);
 }
 
-#[test]
 #[ignore]
+#[test]
 fn part2() {
     log_init();
     let answer = solve_part2(get_input(DAY, "input"))
