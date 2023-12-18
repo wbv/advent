@@ -22,7 +22,7 @@ fn part1() {
 }
 
 #[test]
-fn example3() {
+fn example2() {
     log_init();
     let answer = solve_part2(get_input(DAY, "example"))
         .expect("failed to get a solution");
