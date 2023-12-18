@@ -165,256 +165,84 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<u128> {
         debug!("  {n:?} = {l:?}, {r:?}");
     }
 
+    // figure out each starting node
     let mut traversals = map.keys()
         .filter_map(|&n| if n.is_start() { Some(Traversal::new(&n)) } else { None })
         .collect::<Vec<Traversal>>();
-    // let mut instructions = instruction.iter().cycle();
+    // our instructions form an infinite loop
+    let mut instructions = instruction.iter().cycle();
 
     debug!("Instructions: {}", String::from_iter(instruction.iter()));
     debug!("Instructions Length: {}", instruction.len());
 
-    for iloop in 0.. {
-        for (instr_idx, instr) in instruction.iter().enumerate() {
+    // run our iterations until every pair has looped once
+    let mut step = 0u128;
+    while traversals.iter().any(|t| t.repeat.is_none()) {
 
-            // for each starting node's traversal
-            for t in traversals.iter_mut() {
-                // move it along the map according to the current direction
-                t.node = match &instr {
-                    'L' => map[&t.node].0,
-                    'R' => map[&t.node].1,
-                    _ => panic!("bad direction"),
-                };
+        // step 1 = the location after the first traverse
+        let dir = instructions.next().unwrap();
+        step += 1;
 
-                // record if we visit an acceptable end-node
-                if t.node.is_end() {
-                    // track end-nodes uniquely by which instruction in the cycle of instructions
-                    // we found them at, noting how many cycles through all instructions we've
-                    // been through at each visit
-                    t.ends.entry(End { instr_idx, node: t.node })
-                        .and_modify(|iloop_idxs| iloop_idxs.push(iloop))
-                        .or_insert(vec![iloop]);
+        // for each starting node's traversal
+        for t in traversals.iter_mut() {
+            // move it along the map according to the current direction
+            t.node = match &dir {
+                'L' => map[&t.node].0,
+                'R' => map[&t.node].1,
+                _ => panic!("bad direction"),
+            };
 
-                    // let next_node = match instruction[(instr_idx + 1) % instruction.len()] {
-                    //     'L' => map[&t.node].0,
-                    //     'R' => map[&t.node].1,
-                    //     _ => panic!("predictive bad direction"),
-                    // };
-                    // debug!("BTW: traversal {:?} has next move ({:?} --> {:?})", t.start_node, t.node, next_node);
+            // record if we visit an acceptable end-node
+            if t.node.is_end() {
+                t.ends.push(step);
+
+                // if we see an end node twice, we assume it's a loop
+                if t.ends.iter().count() == 2 {
+                    t.repeat = Some(Repeat {
+                        start: t.ends[0],
+                        end: t.ends[1],
+                    });
                 }
             }
         }
-
-        debug!("");
-        debug!("---> instruction loop = {iloop}");
-        for t in traversals.iter() {
-            debug!("Node: {:?}", t.start_node);
-            for (end, loop_idxs) in t.ends.iter() {
-                // if we find an end-node that has been visited twice on the same instruction then
-                // we know that all other end-nodes (if any) for this traversal will repeat on the
-                // same pattern (at the same distance).
-                if loop_idxs.len() > 1 {
-                    debug!("  LOOP AT {:?} | instr_idx: {:?} ... {:?}", end.node, end.instr_idx, loop_idxs);
-                    let cycle_start = loop_idxs[0];
-                    let cycle_len = loop_idxs[1] - loop_idxs[0];
-                    debug!("               | (cycle start: {cycle_start}, cycle length: {cycle_len})");
-                    let loop_start = end.instr_idx + (loop_idxs[0] * instruction.len());
-                    let loop_len = (loop_idxs[1] - loop_idxs[0]) * instruction.len();
-                    debug!("               | (step start: {loop_start}, step length: {loop_len})");
-                } else {
-                    debug!("   end at {:?} | instr_idx: {:?} ... {:?}", end.node, end.instr_idx, loop_idxs);
-                    let cycle_start = loop_idxs[0];
-                    debug!("               | (cycle start: {cycle_start})");
-                    let loop_start = end.instr_idx + (loop_idxs[0] * instruction.len());
-                    debug!("               | (step start: {loop_start})");
-                }
-            }
-        }
-
-        // once all traversals have found the "true" loop (i.e. we land twice on the same
-        // node/instruction-#-of-cycle pair), we can stop the sequential search
-        if traversals.iter().all(|t| t.ends.len() > 0 && t.ends.values().all(|end| end.len() > 1)) {
-            break;
-        }
     }
 
-    // find instruction indices all (cycle_idxs) upon which we found a loop
-    let mut cycle_idxs = traversals.iter()
-        .map(|t| t.ends.keys().map(|e| e.instr_idx))
-        .flatten()
-        .collect::<Vec<_>>();
-    cycle_idxs.sort();
-    cycle_idxs.dedup();
-    debug!("Unique cycle indices: {cycle_idxs:?}");
+    // verify an assumption about our input (to make calculation easier)
+    let uniform_loops = traversals.iter().all(|t| t.repeat.is_some_and(|x| x.end - x.start == x.start));
+    debug_assert!(uniform_loops);
+    let lcm = traversals.iter_mut()
+        .map(|t| t.repeat.unwrap().start)
+        .reduce(|lcm, mut cur| {
+            // fun fact, the loops are prime numbers times the instruction length
+            // (but NOT in the example code, so we have to condition it here >.>)
+            if cur % (instruction.len() as u128) == 0 && cur != instruction.len() as u128 {
+                debug!("shortening cur {cur} to {}", cur / (instruction.len() as u128));
+                cur = cur / (instruction.len() as u128)
+            };
+            lcm * cur
+        });
 
-    // find which idxs aren't met by a loop in every traversal
-    cycle_idxs.retain(|&idx| {
-        traversals.iter().all(|t| t.ends.keys().any(|e| e.instr_idx == idx))
-    });
-    debug!("Unique AND APPLICABLE cycle indices: {cycle_idxs:?}");
-
-    // remove those from the traversals list
-    for t in traversals.iter_mut() {
-        t.ends.retain(|end, _| cycle_idxs.contains(&end.instr_idx));
-    }
-
-    debug!("Remaining traversals:");
-    for t in traversals.iter() {
-        debug!(" {:?}", t.start_node);
-        for (e, ps) in t.ends.iter() {
-            debug!("  {:?} : {:?}", e, ps);
-        }
-    }
-
-    // pretty sure we only have one to check, but make sure of it first
-    debug_assert_eq!(cycle_idxs.len(), 1);
-    let cycle_idx = cycle_idxs[0];
-    let lcm = traversals.iter()
-        .map(|t| {
-            let ends = t.ends.keys()
-                .filter(|e| e.instr_idx == cycle_idx)
-                .collect::<Vec<_>>();
-            // verify there's only one loop at this cycle index per traversal
-            debug_assert_eq!(ends.len(), 1);
-            let cycle = t.ends[ends[0]].clone();
-
-            // also make sure that the loops happen exactly one before the entire sequence starts
-            // over
-            let first = (cycle[0] + 1) as u128;
-            let size = (cycle[1] - cycle[0]) as u128;
-            debug!("LOOP on cycles: {:?} (size {:?})", first, size);
-            debug_assert_eq!(first, size);
-            first
-        })
-        .reduce(|mut lcm, mut cur| {
-            debug!("doing LCM: {lcm} and {cur}");
-            // INEFFICIENT LCM BELOW
-            let lcm_step = lcm;
-            let cur_step = cur;
-            while lcm != cur {
-                if lcm < cur {
-                    lcm += lcm_step;
-                } else {
-                    cur += cur_step;
-                }
-            }
-
-            lcm
-    });
-
-    let lcm = lcm.unwrap();
-    let steps = (lcm - 1) * (instruction.len() as u128) + cycle_idx as u128;
-    Ok(steps)
-
-    //let ans = traversals.iter().map(|t|
-    //    t.ends.values()
-    //        .map(|idxs| idxs[1] - idxs[0])
-    //        .collect::<Vec<_>>())
-    //    .reduce(|lcm, current| {
-    //    // INEFFICIENT SOLUTION: find the first step where 'all' current elements overlap
-    //    let mut left = lcm;
-    //    let mut right = current;
-    //    while left != right {
-    //        if left < right {
-    //            left += all.num_elements;
-    //        } else {
-    //            right += cur.num_elements;
-    //        }
-    //    }
-    //    debug!("{left} == {right}");
-    //    let start = left;
-    //    let num_elements = start - all.start;
-    //    debug!("with num_elements {num_elements}");
-    //    Loop { start, num_elements }
-    //});
-
-    // while traversals.iter().any(|t| t.path_loop.is_none()) {
-    //     //debug!("TRAVERSAL ITERATION = {:?}", traversals.iter().map(|t| t.node).collect::<Vec<_>>());
-    //     let next = instructions.next();
-    //     for t in traversals.iter_mut().filter(|t| t.path_loop.is_none()) {
-    //         t.node = match next {
-    //             Some(&'L') => map[&t.node].0,
-    //             Some(&'R') => map[&t.node].1,
-    //             _ => panic!("BAD DIRECTION"),
-    //         };
-    //         //debug!("node {:?} has seen {:?}", t.node, t.seen);
-
-    //         // check if we're on an end-node
-    //         if t.node.is_end() {
-    //             // check if we visited this end-node already
-    //             for (i, n) in t.seen.iter().enumerate() {
-    //                 if t.node == *n {
-    //                     let path_loop = Loop {
-    //                         start: i as isize,
-    //                         num_elements: t.seen.len() as isize - i as isize,
-    //                     };
-    //                     debug!("TERMINAL LOOP: {:?} to {:?}", n, t.node);
-    //                     debug!("(which is): {:?}", path_loop);
-    //                     debug!("Sanity: that loop is {:?}", t.seen);
-    //                     t.path_loop = Some(path_loop);
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //         t.seen.push(t.node);
-    //     }
-    // }
-
-    // let paths = traversals.iter().map(|t| t.path_loop.unwrap()).collect::<Vec<_>>();
-    // debug!(">>> {paths:?}");
-
-    // let ans = paths.into_iter().reduce(|all, cur| {
-    //     debug!("reducing {cur:?} into {all:?}");
-
-    //     // INEFFICIENT SOLUTION: find the first step where 'all' current elements overlap
-    //     let mut left = all.start;
-    //     let mut right = cur.start;
-    //     while left != right {
-    //         if left < right {
-    //             left += all.num_elements;
-    //         } else {
-    //             right += cur.num_elements;
-    //         }
-    //     }
-    //     debug!("{left} == {right}");
-    //     let start = left;
-    //     let num_elements = start - all.start;
-    //     debug!("with num_elements {num_elements}");
-    //     Loop { start, num_elements }
-    // });
-
-
-    // // start is the first time everyone "collectively loops"
-    // Ok(ans.map(|x| x.start ).unwrap_or(0))
+    Ok(lcm.unwrap())
 }
 
-// #[derive(Clone, Copy, Debug)]
-// struct Loop {
-//     start: isize,
-//     num_elements: isize,
-// }
-
-#[derive(PartialEq, Eq, Hash, Debug)]
-struct End {
-    instr_idx: usize,
-    node: Node,
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+struct Repeat {
+    start: u128,
+    end: u128,
 }
 
 struct Traversal {
-    start_node: Node,
     node: Node,
-    // seen: Vec<Node>,
-    // path_loop: Option<Loop>,
-    ends: HashMap<End, Vec<usize>>,
+    ends: Vec<u128>,
+    repeat: Option<Repeat>,
 }
 
 impl Traversal {
     fn new(node: &Node) -> Self {
         Self {
-            start_node: *node,
             node: *node,
-            // seen: vec![*node],
-            // path_loop: None,
-            ends: HashMap::new(),
+            ends: vec![],
+            repeat: None,
         }
     }
 }
