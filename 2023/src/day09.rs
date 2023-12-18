@@ -132,7 +132,10 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
             seqs.push(diff(seqs.iter().last().unwrap()));
         }
 
-        sum += seqs.iter().rev().map(|s| s.last().unwrap()).sum::<AdvInt>();
+        sum += seqs.iter()
+            .rev()
+            .map(|s| s.last().unwrap())
+            .sum::<AdvInt>();
     }
 
     Ok(sum)
@@ -189,7 +192,11 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
             seqs.push(diff(seqs.iter().last().unwrap()));
         }
 
-        sum += seqs.iter().rev().map(|s| s[0]).reduce(|acc, v| v - acc).unwrap();
+        sum += seqs.iter()
+            .rev()
+            .map(|s| s[0])
+            .reduce(|acc, v| v - acc)
+            .unwrap();
     }
 
     Ok(sum)
