@@ -11,6 +11,6 @@ pub mod day08;
 pub mod day09;
 pub mod day10;
 
-pub use log::*;
+use log::*;
 
 use std::io::BufRead;

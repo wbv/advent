@@ -1,4 +1,5 @@
-//! # Wait For It
+//! Wait For It
+//! -----------
 //!
 //! The ferry quickly brings you across Island Island. After asking around, you discover that there
 //! is indeed normally a large pile of sand somewhere near here, but you don't see anything besides
@@ -18,8 +19,8 @@
 //! grand prize, you need to make sure you go farther in each race than the current record holder.
 
 #![cfg(not(doctest))]
-use super::*;
 
+use super::*;
 
 /// # Best Times
 ///
@@ -87,16 +88,16 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
     let times = lines.next().unwrap().unwrap()
         .split_once(':').unwrap().1
         .split_whitespace()
-        .map(|v| isize::from_str_radix(v, 10).unwrap())
-        .collect::<Vec<_>>();
+        .map(|v| v.parse().unwrap())
+        .collect::<Vec<isize>>();
 
     let records = lines.next().unwrap().unwrap()
         .split_once(':').unwrap().1
         .split_whitespace()
-        .map(|v| isize::from_str_radix(v, 10).unwrap())
-        .collect::<Vec<_>>();
+        .map(|v| v.parse().unwrap())
+        .collect::<Vec<isize>>();
 
-    let prod_wins = times.into_iter().zip(records.into_iter())
+    let prod_wins = times.into_iter().zip(records)
         .map(|(time, record)| winning_waits(time, record))
         .reduce(|acc, w| acc*w).unwrap();
 
@@ -138,14 +139,14 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<isize> {
         .filter(|ch| !ch.is_ascii_whitespace())
         .collect::<String>();
 
-    let time = isize::from_str_radix(time_str.as_str(), 10).unwrap();
+    let time = time_str.parse().unwrap();
 
     let record_str = lines.next().unwrap().unwrap()
         .split_once(':').unwrap().1
         .chars()
         .filter(|ch| !ch.is_ascii_whitespace())
         .collect::<String>();
-    let record = isize::from_str_radix(record_str.as_str(), 10).unwrap();
+    let record = record_str.parse().unwrap();
 
     Ok(winning_waits(time, record))
 }

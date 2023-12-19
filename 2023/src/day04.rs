@@ -1,6 +1,5 @@
-#![cfg(not(doctest))]
-
-//! # Scratchcards
+//! Scratchcards
+//! ------------
 //!
 //! The gondola takes you up. Strangely, though, the ground doesn't seem to be coming with you;
 //! you're not climbing a mountain. As the circle of Snow Island recedes below you, an entire new
@@ -22,6 +21,8 @@
 //! to come up with a better naming scheme. Tell you what: if you can help me with something quick,
 //! I'll let you borrow my boat and you can go visit the gardener. I got all these scratchcards as
 //! a gift, but I can't figure out what I've won."
+
+#![cfg(not(doctest))]
 
 use super::*;
 use std::{collections::HashSet, iter::repeat};
@@ -55,11 +56,11 @@ use regex::Regex;
 /// 83, 17, and 86) are winning numbers! That means card 1 is worth 8 points (1 for the first
 /// match, then doubled three times for each of the three matches after the first).
 ///
-///  - Card 2 has two winning numbers (32 and 61), so it is worth 2 points.
-///  - Card 3 has two winning numbers (1 and 21), so it is worth 2 points.
-///  - Card 4 has one winning number (84), so it is worth 1 point.
-///  - Card 5 has no winning numbers, so it is worth no points.
-///  - Card 6 has no winning numbers, so it is worth no points.
+/// - Card 2 has two winning numbers (32 and 61), so it is worth 2 points.
+/// - Card 3 has two winning numbers (1 and 21), so it is worth 2 points.
+/// - Card 4 has one winning number (84), so it is worth 1 point.
+/// - Card 5 has no winning numbers, so it is worth no points.
+/// - Card 6 has no winning numbers, so it is worth no points.
 ///
 /// So, in this example, the Elf's pile of scratchcards is worth 13 points.
 ///
@@ -73,11 +74,11 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
         let (_, line) = line.split_once(':').unwrap();
         let mut line = line.split(|ch| ch == '|');
         let (winning, ours) = (line.next().unwrap(), line.next().unwrap());
-        let winning: HashSet<_> = re.find_iter(winning)
-            .map(|x| usize::from_str_radix(x.as_str(), 10).unwrap())
+        let winning: HashSet<usize> = re.find_iter(winning)
+            .map(|x| x.as_str().parse().unwrap())
             .collect();
-        let ours: HashSet<_> = re.find_iter(ours)
-            .map(|x| usize::from_str_radix(x.as_str(), 10).unwrap())
+        let ours: HashSet<usize> = re.find_iter(ours)
+            .map(|x| x.as_str().parse().unwrap())
             .collect();
 
         let num_matches = winning.intersection(&ours).count() as u32;
@@ -89,7 +90,7 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
     Ok(sum)
 }
 
-/// # ??
+/// # Exponential Winnings
 ///
 /// Just as you're about to report your findings to the Elf, one of you realizes that the rules
 /// have actually been printed on the back of every card this whole time.
@@ -118,13 +119,17 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
 /// Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
 /// ```
 ///
-///   - Card 1 has four matching numbers, so you win one copy each of the next four cards: cards 2, 3, 4, and 5.
-///   - Your original card 2 has two matching numbers, so you win one copy each of cards 3 and 4.
-///   - Your copy of card 2 also wins one copy each of cards 3 and 4.
-///   - Your four instances of card 3 (one original and three copies) have two matching numbers, so you win four copies each of cards 4 and 5.
-///   - Your eight instances of card 4 (one original and seven copies) have one matching number, so you win eight copies of card 5.
-///   - Your fourteen instances of card 5 (one original and thirteen copies) have no matching numbers and win no more cards.
-///   - Your one instance of card 6 (one original) has no matching numbers and wins no more cards.
+/// - Card 1 has four matching numbers, so you win one copy each of the next four cards: cards 2,
+///   3, 4, and 5.
+/// - Your original card 2 has two matching numbers, so you win one copy each of cards 3 and 4.
+/// - Your copy of card 2 also wins one copy each of cards 3 and 4.
+/// - Your four instances of card 3 (one original and three copies) have two matching numbers, so
+///   you win four copies each of cards 4 and 5.
+/// - Your eight instances of card 4 (one original and seven copies) have one matching number, so
+///   you win eight copies of card 5.
+/// - Your fourteen instances of card 5 (one original and thirteen copies) have no matching numbers
+///   and win no more cards.
+/// - Your one instance of card 6 (one original) has no matching numbers and wins no more cards.
 ///
 /// Once all of the originals and copies have been processed, you end up with 1 instance of card 1,
 /// 2 instances of card 2, 4 instances of card 3, 8 instances of card 4, 14 instances of card 5,
@@ -142,11 +147,11 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<usize> {
         let (_, line) = line.split_once(':').unwrap();
         let mut line = line.split(|ch| ch == '|');
         let (winning, ours) = (line.next().unwrap(), line.next().unwrap());
-        let winning: HashSet<_> = re.find_iter(winning)
-            .map(|x| usize::from_str_radix(x.as_str(), 10).unwrap())
+        let winning: HashSet<usize> = re.find_iter(winning)
+            .map(|x| x.as_str().parse().unwrap())
             .collect();
-        let ours: HashSet<_> = re.find_iter(ours)
-            .map(|x| usize::from_str_radix(x.as_str(), 10).unwrap())
+        let ours: HashSet<usize> = re.find_iter(ours)
+            .map(|x| x.as_str().parse().unwrap())
             .collect();
 
         let num_matches = winning.intersection(&ours).count();

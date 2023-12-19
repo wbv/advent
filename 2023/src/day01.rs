@@ -15,8 +15,7 @@
 
 use super::*;
 
-/// Reading Digits
-/// --------------
+/// # Reading Digits
 ///
 /// The newly-improved calibration document consists of lines of text; each line originally
 /// contained a specific calibration value that the Elves now need to recover. On each line, the
@@ -64,8 +63,7 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
     Ok(sum)
 }
 
-/// Adding Numerals
-/// ---------------
+/// # Adding Numerals
 ///
 /// Your calculation isn't quite right. It looks like some of the digits are actually spelled out
 /// with letters: one, two, three, four, five, six, seven, eight, and nine also count as valid

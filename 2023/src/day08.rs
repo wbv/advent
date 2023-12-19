@@ -1,7 +1,5 @@
-#![cfg(not(doctest))]
-
-
-//! # Haunted Wasteland
+//! Haunted Wasteland
+//! -----------------
 //!
 //! You're still riding a camel across Desert Island when you spot a sandstorm quickly approaching.
 //! When you turn to warn the Elf, she disappears before your eyes! To be fair, she had just
@@ -12,11 +10,13 @@
 //! of the documents contains a list of left/right instructions, and the rest of the documents seem
 //! to describe some kind of network of labeled nodes.
 
+#![cfg(not(doctest))]
+
 use std::collections::HashMap;
 
 use super::*;
 
-/// ## Follow The Map
+/// # Follow The Map
 ///
 /// It seems like you're meant to use the left/right instructions to navigate the network. Perhaps
 /// if you have the camel follow the same instructions, you can escape the haunted wasteland!
@@ -197,7 +197,7 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<u128> {
                 t.ends.push(step);
 
                 // if we see an end node twice, we assume it's a loop
-                if t.ends.iter().count() == 2 {
+                if t.ends.len() == 2 {
                     t.repeat = Some(Repeat {
                         start: t.ends[0],
                         end: t.ends[1],
@@ -217,7 +217,7 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<u128> {
             // (but NOT in the example code, so we have to condition it here >.>)
             if cur % (instruction.len() as u128) == 0 && cur != instruction.len() as u128 {
                 debug!("shortening cur {cur} to {}", cur / (instruction.len() as u128));
-                cur = cur / (instruction.len() as u128)
+                cur /= instruction.len() as u128
             };
             lcm * cur
         });

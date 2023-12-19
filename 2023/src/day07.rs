@@ -1,6 +1,5 @@
-#![cfg(not(doctest))]
-
-//! # Camel Cards
+//! Camel Cards
+//! -----------
 //!
 //! Your all-expenses-paid trip turns out to be a one-way, five-minute ride in an airship. (At
 //! least it's a cool airship!) It drops you off at the edge of a vast desert and descends back to
@@ -24,6 +23,8 @@
 //!
 //! You've already assumed it'll be your job to figure out why the parts stopped when she asks if
 //! you can help. You agree automatically.
+
+#![cfg(not(doctest))]
 
 use std::collections::BinaryHeap;
 
@@ -142,7 +143,7 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<isize> {
 }
 
 fn get_winnings<B: BufRead>(input: B, rules: RuleSet) -> std::io::Result<isize> {
-    let hands = input.lines().into_iter()
+    let hands = input.lines()
         .map(|l| Hand::new(l.unwrap(), rules))
         .collect::<BinaryHeap<_>>()
         .into_sorted_vec();
@@ -209,7 +210,7 @@ impl Hand {
             .split_whitespace()
             .collect::<Vec<_>>();
         let cards: Cards = line[0].try_into().unwrap();
-        let bet = isize::from_str_radix(line[1], 10).unwrap();
+        let bet = line[1].parse().unwrap();
         let strength = Hand::strength(&cards, rules);
         Hand { cards, bet, strength, rules }
     }
@@ -217,7 +218,7 @@ impl Hand {
     pub fn strength(cards: &Cards, rules: RuleSet) -> Strength {
         debug!("HAND: {}", cards.0.iter().map(|&c| c as char).collect::<String>());
         let mut unique = cards.0.to_vec();
-        unique.sort_by(|a, b| card_strength(a, rules).cmp(&card_strength(b, rules)));
+        unique.sort_by_key(|a| card_strength(a, rules));
         unique.dedup();
         debug!("unique: {}", unique.iter().map(|&c| c as char).collect::<String>());
 
@@ -283,7 +284,7 @@ impl std::cmp::PartialEq for Hand {
 impl std::cmp::Eq for Hand {}
 impl std::cmp::PartialOrd for Hand {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(&other))
+        Some(self.cmp(other))
     }
 }
 

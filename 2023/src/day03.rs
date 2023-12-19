@@ -1,6 +1,5 @@
-#![cfg(not(doctest))]
-
-//! # Gear Ratios
+//! Gear Ratios
+//! -----------
 //!
 //! You and the Elf eventually reach a gondola lift station; he says the gondola lift will take you
 //! up to the water source, but this is as far as he can bring you. You go inside.
@@ -13,11 +12,13 @@
 //! wasn't expecting anyone! The gondola lift isn't working right now; it'll still be a while
 //! before I can fix it." You offer to help.
 
+#![cfg(not(doctest))]
+
 use super::*;
 use std::{collections::HashMap, iter::repeat};
 use regex::bytes::Regex;
 
-/// # Symbol Locality
+/// # Just the Parts
 ///
 /// The engineer explains that an engine part seems to be missing from the engine, but nobody can
 /// figure out which one. If you can add up all the part numbers in the engine schematic, it should
@@ -58,7 +59,7 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
     Ok(sum)
 }
 
-/// --- Part Two ---
+/// # Product of Gear Ratios
 ///
 /// The engineer finds the missing part and installs it in the engine! As the engine springs to
 /// life, you jump in the closest gondola, finally ready to ascend to the water source.
@@ -122,7 +123,7 @@ struct Coordinate {
     y: isize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 struct Number {
     value: usize,
     near_symbol: bool,
@@ -176,12 +177,9 @@ impl Schematic {
             let gears: Vec<_> = neighbors.filter(|(x, y)| schematic.at(*x, *y) == b'*').collect();
             for (x, y) in gears {
                 // add it to the list of that gear's neighboring numbers (for the gear that we found)
-                let coord = Coordinate { x, y };
-                if schematic.gears.contains_key(&coord) {
-                    schematic.gears.entry(coord).and_modify(|g| g.nums.push(number.clone()));
-                } else {
-                    schematic.gears.insert(coord, Gear { nums: vec![number.clone()] });
-                }
+                schematic.gears.entry(Coordinate { x, y })
+                    .and_modify(|g| g.nums.push(number))
+                    .or_insert(Gear { nums: vec![number] });
             }
 
             // store the parsed number and its attributes

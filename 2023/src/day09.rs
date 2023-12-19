@@ -1,6 +1,5 @@
-#![cfg(not(doctest))]
-
-//! # Mirage Maintenance
+//! Mirage Maintenance
+//! ------------------
 //!
 //! You ride the camel through the sandstorm and stop where the ghost's maps told you to stop. The
 //! sandstorm subsequently subsides, somehow seeing you standing at an oasis!
@@ -17,6 +16,8 @@
 //! Island. It must have a delicate ecosystem; you might as well take some ecological readings
 //! while you wait. Maybe you can report any environmental instabilities you find to someone so the
 //! oasis can be around for the next sandstorm-worn traveler.
+
+#![cfg(not(doctest))]
 
 use super::*;
 
