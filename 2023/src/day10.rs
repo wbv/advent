@@ -1,7 +1,5 @@
 #![cfg(not(doctest))]
 
-use std::collections::HashMap;
-
 /// # Pipe Maze
 ///
 /// You use the hang glider to ride the hot air from Desert Island all the way up to the floating
@@ -153,7 +151,7 @@ use super::*;
 /// Find the single giant loop starting at S. How many steps along the loop does it take to get
 /// from the starting position to the point farthest from the starting position?
 pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
-    let maze = PipeMaze::from(input.lines().map(|l| l.expect("i/o error on lines")));
+    let mut maze = PipeMaze::from(input.lines().map(|l| l.expect("i/o error on lines")));
     Ok(maze.traverse())
 }
 
@@ -282,7 +280,7 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
 /// loop. How many tiles are enclosed by the loop?
 ///
 pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
-    let maze = PipeMaze::from(input.lines().map(|l| l.expect("i/o error on lines")));
+    let mut maze = PipeMaze::from(input.lines().map(|l| l.expect("i/o error on lines")));
     maze.traverse();
     Ok(AdvInt::MAX)
 }
@@ -291,11 +289,15 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
 type AdvInt = usize;
 
 #[derive(Copy, Clone, Eq, PartialEq)]
-struct Pipe(u8);
+struct Pipe {
+    // Some(depth) from start pipe. None when not seen in traversal.
+    depth: Option<AdvInt>,
+    kind: u8,
+}
 
 impl Pipe {
     fn dirs(self: &Pipe) -> Vec<Direction> {
-        match self.0 {
+        match self.kind {
           b'|' => vec![North, South],
           b'-' => vec![East, West],
           b'L' => vec![North, East],
@@ -304,7 +306,7 @@ impl Pipe {
           b'F' => vec![South, East],
           b'.' => vec![],
           b'S' => vec![North, South, East, West],
-          _ => panic!("bad pipe ({}) dirs loopup", self.0 as char),
+          _ => panic!("bad pipe ({}) dirs loopup", self.kind as char),
         }
     }
 }
@@ -318,8 +320,8 @@ impl From<u8> for Pipe {
           | b'J'
           | b'7'
           | b'F'
-          | b'.'
-          | b'S' => Pipe(byte),
+          | b'.' => Pipe { kind: byte, depth: None },
+            b'S' => Pipe { kind: byte, depth: Some(0) },
             _ => panic!("invalid pipe character: {}", byte as char),
         }
     }
@@ -327,7 +329,7 @@ impl From<u8> for Pipe {
 
 impl std::fmt::Debug for Pipe {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.0 as char)
+        write!(f, "{}", self.kind as char)
     }
 }
 
@@ -387,10 +389,6 @@ impl std::fmt::Debug for Coord {
 }
 
 
-fn can_connect(from: Pipe, dir: Direction, to: Pipe) -> bool {
-    from.dirs().contains(&dir) && to.dirs().contains(&dir.rev())
-}
-
 struct PipeMaze {
     width: usize,
     flatmap: Vec<Pipe>,
@@ -417,9 +415,12 @@ impl PipeMaze {
         // double-check that flattened grid dimensions match 2D grid
         debug_assert_eq!(height * width, flatmap.len());
 
+        // double-check that we only have a single start-pipe
+        debug_assert_eq!(flatmap.iter().filter(|p| p.kind == b'S').count(), 1);
+
         debug!("the map:");
         for y in 0..height {
-            let line = (0..width).map(|x| flatmap[y * width + x].0 as char).collect::<String>();
+            let line = (0..width).map(|x| flatmap[y * width + x].kind as char).collect::<String>();
             debug!("  {}", line);
         }
 
@@ -441,14 +442,23 @@ impl PipeMaze {
         }
     }
 
+    fn try_get_mut(&mut self, x: isize, y: isize) -> Option<&mut Pipe> {
+        let i = (y as usize * self.width) + x as usize;
+        self.flatmap.get_mut(i)
+    }
+
     fn at(&self, coord: Coord) -> Pipe {
         self.get(coord.x, coord.y)
+    }
+
+    fn try_at_mut(&mut self, coord: Coord) -> Option<&mut Pipe> {
+        self.try_get_mut(coord.x, coord.y)
     }
 
     fn start(&self) -> Coord {
         let index = self.flatmap.iter()
             .enumerate()
-            .skip_while(|(_, p)| p.0 != b'S')
+            .skip_while(|(_, p)| p.kind != b'S')
             .next()
             .expect("no start in maze")
             .0;
@@ -462,43 +472,50 @@ impl PipeMaze {
         self.at(coord)
             .dirs()
             .into_iter()
-            .map(|d| d.into())
+            .filter_map(|dir| {
+                let next = coord + dir.into();
+                let here = self.at(coord);
+                let there = self.at(next);
+                debug!("Checking: {:?} at {:?} ({:?}) going {:?} = {:?} at {:?} ({:?})", here, coord, here.depth, dir, there, next, there.depth);
+                if self.at(next).depth.is_none() && self.can_connect(coord, dir, next) {
+                    info!("Connection: {:?} -> {:?}", coord, next);
+                    Some(next)
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 
     fn can_connect(&self, from: Coord, dir: Direction, to: Coord) -> bool {
-        can_connect(self.at(from), dir, self.at(to))
+        self.at(from).dirs().contains(&dir) && self.at(to).dirs().contains(&dir.rev())
     }
 
-    fn traverse(&self) -> usize {
+    /// Traverses the pipes, setting depth (distance from start) on all pipes visited.
+    fn traverse(&mut self) -> usize {
         let start = self.start();
 
-        let mut seen = HashMap::new();
-        seen.insert(self.start(), 0);
-
-        let mut paths = vec![start];
+        let mut paths = self.connecting(start);
         let mut depth = 1;
         while !paths.is_empty() {
             debug!("==> DEPTH: {depth}");
+
+            // visit each current coordinate in the path
+            for coord in &paths {
+                let here = self.try_at_mut(*coord).unwrap();
+                here.depth = Some(depth);
+                warn!("{:?} at {:?} is now seen with depth {:?}", self.at(*coord), coord, self.at(*coord).depth);
+            }
+
+            // for each coordinate, find non-traversed connecting coordinates and "traverse" them
             paths = paths.into_iter()
-                .map(|path| {
-                    debug!("At: {:?}", path);
-                    self.at(path).dirs().into_iter().filter_map(|dir| {
-                        let next = path + dir.into();
-                        debug!("Checking: {:?} at {:?} going {:?} = {:?} at {:?}", self.at(path), path, dir, self.at(next), next);
-                        if !seen.contains_key(&next) && self.can_connect(path, dir, next) {
-                            info!("Connection: {:?} -> {:?}", path, next);
-                            seen.insert(next, depth);
-                            Some(next)
-                        } else {
-                            None
-                        }
-                    }).collect::<Vec<_>>()
-                }).flatten()
-            .collect::<Vec<_>>();
+                .map(|coord| self.connecting(coord))
+                .flatten()
+                .collect::<Vec<_>>();
+
             depth += 1;
         }
 
-        *seen.values().max().unwrap()
+        self.flatmap.iter().fold(0, |acc, p| p.depth.map_or(acc, |d| d.max(acc)))
     }
 }
