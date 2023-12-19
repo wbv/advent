@@ -282,7 +282,44 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
 pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
     let mut maze = PipeMaze::from(input.lines().map(|l| l.expect("i/o error on lines")));
     maze.traverse();
-    Ok(AdvInt::MAX)
+
+    debug!(">>>>> Traverse done, performing longitudinal collision detection' <<<<<");
+    let mut enclosed = 0;
+    for y in 0..(maze.flatmap.len() / maze.width) as isize {
+        // for each line, keep track of whether we've entered or exited the loop
+        // by determining which way the loop entered and exited our line
+        let mut crossed: Crossed = false.into();
+        let mut inside = false;
+        debug!("Examining Line: {y}");
+        for x in 0..maze.width as isize {
+            // if we crossed over the loop completely after leaving the last tile, we're either
+            // gone from inside to outside, or outside to inside.
+            if crossed.over() {
+                warn!("CROSSED");
+                inside = !inside;
+                crossed = false.into();
+            }
+            // if we're on a loop tile, record which ways the pipe is connected
+            if maze.get(x, y).depth.is_some() {
+                let dirs = maze.connected_dirs(Coord { x, y });
+                crossed.north ^= dirs.contains(&North);
+                crossed.south ^= dirs.contains(&South);
+                debug!("Pipe {dirs:?} => {crossed:?}");
+            } else {
+                // if we're not on a loop tile, forget any directions were crossed
+                crossed = false.into();
+
+                if inside {
+                    info!(" -> TILE INSIDE");
+                    enclosed += 1
+                } else {
+                    debug!("<-  tile outside");
+                }
+            }
+        }
+    }
+
+    Ok(enclosed)
 }
 
 /// Numeric type used for the answer to this puzzle
@@ -476,7 +513,7 @@ impl PipeMaze {
                 let here = self.at(coord);
                 let there = self.at(next);
                 debug!("Checking: {:?} at {:?} ({:?}) going {:?} = {:?} at {:?} ({:?})", here, coord, here.depth, dir, there, next, there.depth);
-                if self.at(next).depth.is_none() && self.can_connect(coord, dir, next) {
+                if there.depth.is_none() && self.can_connect(coord, dir, next) {
                     info!("Connection: {:?} -> {:?}", coord, next);
                     Some(next)
                 } else {
@@ -488,6 +525,22 @@ impl PipeMaze {
 
     fn can_connect(&self, from: Coord, dir: Direction, to: Coord) -> bool {
         self.at(from).dirs().contains(&dir) && self.at(to).dirs().contains(&dir.rev())
+    }
+
+    fn connected_dirs(&self, coord: Coord) -> Vec<Direction> {
+        let here = self.at(coord);
+        if here.depth.is_none() {
+            return vec![];
+        }
+
+        self.at(coord)
+            .dirs()
+            .into_iter()
+            .filter(|&dir| {
+                let neighbor = coord + dir.into();
+                self.at(neighbor).depth.is_some() && self.can_connect(coord, dir, neighbor)
+            })
+            .collect()
     }
 
     /// Traverses the pipes, setting depth (distance from start) on all pipes visited.
@@ -515,5 +568,20 @@ impl PipeMaze {
         }
 
         self.flatmap.iter().fold(0, |acc, p| p.depth.map_or(acc, |d| d.max(acc)))
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct Crossed { north: bool, south: bool }
+
+impl Crossed {
+    fn over(&self) -> bool {
+        self.north && self.south
+    }
+}
+
+impl From<bool> for Crossed {
+    fn from(value: bool) -> Self {
+        Crossed { north: value, south: value }
     }
 }
