@@ -129,7 +129,7 @@ use super::*;
 ///
 /// Expand the universe, then find the length of the shortest path between every pair of galaxies.
 /// What is the sum of these lengths?
-pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
+pub fn solve_part1<L: Iterator<Item = String>>(input: L) -> AdvInt {
     // part1 is just part2 but with a factor-of-2 expansion
     solve_part2(input, 2)
 }
@@ -151,9 +151,8 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
 /// Starting with the same initial image, expand the universe according to these new rules, then
 /// find the length of the shortest path between every pair of galaxies. What is the sum of these
 /// lengths?
-pub fn solve_part2<B: BufRead>(input: B, expansion_factor: usize) -> std::io::Result<AdvInt> {
-    let lines = input.lines().map(|l| l.expect("i/o error reading input file"));
-    let universe = Universe::from(lines);
+pub fn solve_part2<L: Iterator<Item = String>>(input: L, expansion_factor: usize) -> AdvInt {
+    let universe = Universe::from(input);
 
     let empty_cols = universe.empty_cols();
     let empty_rows = universe.empty_rows();
@@ -190,7 +189,7 @@ pub fn solve_part2<B: BufRead>(input: B, expansion_factor: usize) -> std::io::Re
         }
     }
 
-    Ok(distances.into_iter().sum())
+    distances.into_iter().sum()
 }
 
 type AdvInt = usize;
@@ -256,3 +255,18 @@ impl Universe {
             .collect()
     }
 }
+
+#[test]
+fn ex1() { testcase!(solve_part1, "example", 374); }
+
+#[test]
+fn part1() { testcase!(solve_part1, "input", 9795148); }
+
+#[test]
+fn ex2() { testcase!(solve_part2, "example", 1030, 10); }
+
+#[test]
+fn ex3() { testcase!(solve_part2, "example", 8410, 100); }
+
+#[test]
+fn part2() { testcase!(solve_part2, "input", 650672493820, 1_000_000); }
