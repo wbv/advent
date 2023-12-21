@@ -14,8 +14,6 @@
 
 #![cfg(not(doctest))]
 
-use std::collections::HashMap;
-
 use super::*;
 
 /// # Simple Expansion
@@ -132,25 +130,67 @@ use super::*;
 /// Expand the universe, then find the length of the shortest path between every pair of galaxies.
 /// What is the sum of these lengths?
 pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
-    let lines = input.lines().map(|l| l.expect("i/o error reading input file"));
-    let universe = Universe::from(lines).expanded();
+    // part1 is just part2 but with a factor-of-2 expansion
+    solve_part2(input, 2)
+}
 
+/// # Expansion by a Factor
+///
+/// The galaxies are much older (and thus much farther apart) than the researcher initially
+/// estimated.
+///
+/// Now, instead of the expansion you did before, make each empty row or column one million times
+/// larger. That is, each empty row should be replaced with 1000000 empty rows, and each empty
+/// column should be replaced with 1000000 empty columns.
+///
+/// (In the example above, if each empty row or column were merely 10 times larger, the sum of the
+/// shortest paths between every pair of galaxies would be 1030. If each empty row or column were
+/// merely 100 times larger, the sum of the shortest paths between every pair of galaxies would be
+/// 8410. However, your universe will need to expand far beyond these values.)
+///
+/// Starting with the same initial image, expand the universe according to these new rules, then
+/// find the length of the shortest path between every pair of galaxies. What is the sum of these
+/// lengths?
+pub fn solve_part2<B: BufRead>(input: B, expansion_factor: usize) -> std::io::Result<AdvInt> {
+    let lines = input.lines().map(|l| l.expect("i/o error reading input file"));
+    let universe = Universe::from(lines);
+
+    let empty_cols = universe.empty_cols();
+    let empty_rows = universe.empty_rows();
+
+    // calculate L1 ("taxicab geometry") distance for each pair of galaxies
     let mut distances = vec![];
     for i in 0..universe.galaxies.len() {
         let from = &universe.galaxies[i];
         for to in &universe.galaxies[(i+1)..] {
-            // calculate L1 ("taxicab geometry") distance for each pair of galaxies
-            let dist = from.0.abs_diff(to.0) + from.1.abs_diff(to.1);
-            debug!("DISTANCE from {:?} to {:?} = {:?}", from, to, dist);
-            distances.push(dist as usize);
+            let mut dist = from.0.abs_diff(to.0) as AdvInt + from.1.abs_diff(to.1) as AdvInt;
+            debug!("   Distance (unexpanded) from {:?} to {:?} = {:?}", from, to, dist);
+
+            // find all empty rows and columns between this pair of galaxies and multiply each
+            // dimension of the L1 distance by those expanding rows/cols (times their factor)
+            let cols_between = if from.0 < to.0 { from.0 + 1 .. to.0 } else { to.0 + 1 .. from.0 };
+            let expanded_cols = empty_cols
+                .iter()
+                .filter(|&c| cols_between.contains(c))
+                .count()
+                * (expansion_factor - 1);
+            debug!("   Extra cols: {}", expanded_cols);
+
+            let rows_between = if from.1 < to.1 { from.1 + 1 .. to.1 } else { to.1 + 1 .. from.1 };
+            let expanded_rows = empty_rows
+                .iter()
+                .filter(|&r| rows_between.contains(r))
+                .count()
+                * (expansion_factor - 1);
+            debug!("   Extra rows: {}", expanded_cols);
+
+            dist += expanded_cols + expanded_rows;
+            debug!("-> Full Distance from {:?} to {:?} = {:?}", from, to, dist);
+            distances.push(dist);
         }
     }
 
     Ok(distances.into_iter().sum())
-}
-
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
-    todo!()
 }
 
 type AdvInt = usize;
@@ -180,9 +220,8 @@ impl Universe {
         let galaxies = map
             .iter()
             .enumerate()
-            .filter_map(|(i, &b)| {
-                (b == b'#').then(|| ((i % width) as i32, (i / width) as i32))
-            })
+            .filter(|(_, &b)| b == b'#')
+            .map(|(i, _)| ((i % width) as i32, (i / width) as i32))
             .collect();
 
         Universe {
@@ -193,85 +232,27 @@ impl Universe {
         }
     }
 
-    fn get(&self, x: i32, y: i32) -> u8 {
-        if x < 0 || x >= self.width as i32 {
-            b'.'
-        } else if y < 0 || y >= self.height as i32 {
-            b'.'
-        } else {
-            let i = self.to_offset(x, y);
-            self.map[i]
-        }
+    fn empty_rows(&self) -> Vec<i32> {
+        (0..self.height)
+            .filter(|&row| {
+                self.map.iter()
+                    .enumerate()
+                    .filter(|(offset, _)| offset / self.width == row)
+                    .all(|(_, &x)| x == b'.')
+            })
+            .map(|row| row as i32)
+            .collect()
     }
 
-    fn get_mut(&mut self, x: i32, y: i32) -> Option<&mut u8> {
-        let i = self.to_offset(x, y);
-        self.map.get_mut(i)
-    }
-
-    fn to_offset(&self, x: i32, y: i32) -> usize {
-        y as usize * self.width + x as usize
-    }
-
-    fn expanded(&self) -> Self {
-        let mut empty_rows = vec![];
-        for row in 0..self.height {
-            let row_empty = self.map
-                .iter()
-                .enumerate()
-                .filter(|(d, _)| d / self.width == row)
-                .all(|(_, &x)| x == b'.');
-            if row_empty {
-                empty_rows.push(row);
-            }
-        }
-
-        let mut empty_cols = vec![];
-        for col in 0..self.width {
-            let col_empty = self.map
-                .iter()
-                .enumerate()
-                .filter(|(d, _)| d % self.width == col)
-                .all(|(_, &x)| x == b'.');
-            if col_empty {
-                empty_cols.push(col);
-            }
-        }
-
-        debug!("EXPANSION: found {} empty rows, {} empty cols", empty_rows.len(), empty_cols.len());
-        debug!("EXPANSION: rows {:?}, cols {:?} ", empty_rows, empty_cols);
-
-        debug!("Going from:");
-        for row in self.map.chunks_exact(self.width).map(|x| String::from_utf8(x.to_vec())) {
-            debug!("{}", row.unwrap());
-        }
-
-        // copy each row
-        let mut newmap = vec![];
-        for row in 0..self.height {
-            // copy each column in a row
-            let mut newrow = vec![];
-            for col in 0..self.width {
-                // if the column is empty, insert an extra space
-                if empty_cols.contains(&col) {
-                    newrow.push(b'.');
-                }
-                newrow.push(self.get(col as i32, row as i32));
-            }
-
-            // if the row is duplicated, insert it twice
-            if empty_rows.contains(&row) {
-                newmap.push(String::from_utf8(newrow.clone()).expect("non utf8 row"));
-            }
-            newmap.push(String::from_utf8(newrow).expect("non utf8 row"));
-        }
-
-        debug!("");
-        debug!("To:");
-        for row in &newmap {
-            debug!("{}", row);
-        }
-
-        Universe::from(newmap.into_iter())
+    fn empty_cols(&self) -> Vec<i32> {
+        (0..self.width)
+            .filter(|&col| {
+                self.map.iter()
+                    .enumerate()
+                    .filter(|(offset, _)| offset % self.width == col)
+                    .all(|(_, &x)| x == b'.')
+            })
+            .map(|col| col as i32)
+            .collect()
     }
 }

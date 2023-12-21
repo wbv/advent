@@ -21,20 +21,26 @@ fn part1() {
     assert_eq!(answer, 9795148);
 }
 
-#[ignore]
 #[test]
 fn example2() {
     log_init();
-    let answer = solve_part2(get_input(DAY, "example"))
+    let answer = solve_part2(get_input(DAY, "example"), 10)
         .expect("failed to get a solution");
-    assert_eq!(answer, 0);
+    assert_eq!(answer, 1030);
 }
 
-#[ignore]
+#[test]
+fn example3() {
+    log_init();
+    let answer = solve_part2(get_input(DAY, "example"), 100)
+        .expect("failed to get a solution");
+    assert_eq!(answer, 8410);
+}
+
 #[test]
 fn part2() {
     log_init();
-    let answer = solve_part2(get_input(DAY, "input"))
+    let answer = solve_part2(get_input(DAY, "input"), 1_000_000)
         .expect("failed to get a solution");
-    assert_eq!(answer, 0);
+    assert_eq!(answer, 650672493820);
 }
