@@ -32,8 +32,6 @@
 //! which springs are damaged (your puzzle input) are also damaged! You'll need to help them repair
 //! the damaged records.
 
-
-
 use super::*;
 type AdvInt = usize;
 
@@ -123,7 +121,7 @@ pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
 
     for line in input {
         let record: Vec<&str> = line.split_whitespace().collect();
-        let (row, groups) = (record[0], record[2]);
+        let (row, groups) = (record[0], record[1]);
         let groups: Vec<usize> = groups.split(',').map(|n| n.parse().unwrap()).collect();
         sum += count_arrangements(row, groups);
     }
@@ -135,22 +133,189 @@ pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     todo!()
 }
 
-fn inner_perms(groups: &[usize], len: usize) -> Vec<usize> {
-    match groups.len() {
-        0 => vec![],
-        1 => (0..len).into_iter().collect(),
-        x => {
-            let next_step = panic!();
+fn perms(groups: &[usize], len: usize) -> Vec<Vec<usize>> {
+    inner_perms(groups, len, 0)
+}
+fn inner_perms(groups: &[usize], len: usize, depth: usize) -> Vec<Vec<usize>> {
+    debug!("{0:1$}inner_perms(): len = {len:2} | {groups:?}", "", 4*depth);
+    // no groups, no remaining length ==> no permutations
+    if len == 0 || groups.len() == 0 {
+        return vec![];
+    }
+    // minimum amount of length required to fill the rest of `len`
+    let min_len = groups.iter().sum::<usize>() + (groups.len() - 1);
+    if min_len > len {
+        return vec![];
+    }
+
+    if groups.len() == 1 {
+        let remaining = len.saturating_sub(groups[0]);
+        return (0..=remaining).map(|p| vec![p]).collect();
+    } else {
+        // groups.len() > 1, so apply recursion
+        let remaining = len.saturating_sub(groups[0] + 1);
+        let mut perms = vec![];
+        for i in 0.. {
+            let inner = inner_perms(&groups[1..], remaining.saturating_sub(i), depth + 1);
+            debug!("{0:1$}==> {inner:?}", "", 4*(depth+1));
+            match inner.len() {
+                0 => break,
+                _ => {
+                    let mut this = inner.into_iter().map(|p| [vec![i], p].concat()).collect();
+                    perms.append(&mut this);
+                },
+            }
         }
+        perms
     }
 }
 
-fn count_arrangements(line: &str, groups: Vec<usize>) -> usize {
-    1
+fn draw_perm(groups: &[usize], len: usize, perm: &[usize]) -> String {
+    debug_assert_eq!(groups.len(), perm.len());
+    let mut drawn = 0;
+    let mut drawing = String::new();
+    for i in 0..groups.len() {
+        for _ in 0..(perm[i]) {
+            drawing.push('.');
+            drawn += 1;
+        }
+        for _ in 0..(groups[i]) {
+            drawing.push('#');
+            drawn += 1;
+        }
+        // all springs except the last must be followed by a space
+        if i != groups.len() - 1 {
+            drawing.push('.');
+            drawn += 1;
+        }
+    }
+    for _ in 0..(len.saturating_sub(drawn)) {
+        drawing.push('.');
+    }
+    debug!("{}", drawing);
+    drawing
 }
 
+fn draw_perms(groups: &[usize], len: usize, perms: &[Vec<usize>]) {
+    for perm in perms {
+        draw_perm(&groups, len, perm);
+    }
+}
+
+fn can_perm_fit(line: &str, groups: &[usize], permstr: &str) -> bool {
+    let line_bytes = line.as_bytes();
+    let perm_bytes = permstr.as_bytes();
+
+    if line_bytes.len() != perm_bytes.len() {
+        return false;
+    }
+
+    for (&l, &p) in line_bytes.iter().zip(perm_bytes.iter()) {
+        match (l, p) {
+            (b'#', b'.') => return false,
+            (b'.', b'#') => return false,
+            (_, _) => continue,
+        }
+    }
+
+    return true;
+}
+
+fn count_arrangements(line: &str, groups: Vec<usize>) -> usize {
+    let len = line.len();
+    let perms = perms(&groups, len);
+
+    let mut fits = 0;
+    for perm in perms {
+        let permstr = draw_perm(&groups, len, &perm);
+        let can = can_perm_fit(&line, &groups, &permstr);
+        if can {
+            debug!("FITS!");
+            fits += 1;
+        } else {
+            debug!(" doesnt fit");
+        }
+        debug!("     {permstr}");
+        debug!("  in {line}");
+        debug!("");
+    }
+
+    fits
+}
+
+#[test]
+fn permute_ex1() {
+    log_init();
+    let groups = vec![3, 2, 1];
+    let len = 10;
+    let p = perms(&groups, len);
+    debug!("TESTING: {p:?}");
+    draw_perms(&groups, len, &p);
+}
+
+#[test]
+fn permute_ex2() {
+    log_init();
+    let groups = vec![2, 5, 3, 4];
+    let len = 23;
+    let p = perms(&groups, len);
+    debug!("TESTING: {p:?}");
+    draw_perms(&groups, len, &p);
+}
+
+#[test]
+fn permute_fit1() {
+    log_init();
+    let line = String::from("???.###");
+    let groups = [1,1,3];
+    let len = line.len();
+    let perms = perms(&groups, len);
+
+    let mut fits = 0;
+    for perm in perms {
+        let permstr = draw_perm(&groups, len, &perm);
+        let can = can_perm_fit(&line, &groups, &permstr);
+        if can {
+            debug!("FITS!");
+            fits += 1;
+        } else {
+            debug!(" doesnt fit");
+        }
+        debug!("     {permstr}");
+        debug!("  in {line}");
+        debug!("");
+    }
+
+    debug_assert_eq!(fits, 1);
+}
+
+#[test]
+fn permute_fit2() {
+    log_init();
+    let line = String::from(".??..??...?##.");
+    let groups = [1,1,3];
+    let len = line.len();
+    let perms = perms(&groups, len);
+
+    let mut fits = 0;
+    for perm in perms {
+        let permstr = draw_perm(&groups, len, &perm);
+        let can = can_perm_fit(&line, &groups, &permstr);
+        if can {
+            debug!("FITS!");
+            fits += 1;
+        } else {
+            debug!(" doesnt fit");
+        }
+        debug!("     {permstr}");
+        debug!("  in {line}");
+        debug!("");
+    }
+
+    debug_assert_eq!(fits, 4);
+}
 
 testcase!(ex1, solve_part1, "example", 21);
-testcase!(part1, solve_part1, "input", 0);
-testcase!(ex2, solve_part2, "example", 0);
+testcase!(part1, solve_part1, "input", 6949);
+testcase!(ex2, solve_part2, "example", 525152);
 testcase!(part2, solve_part2, "input", 0);
