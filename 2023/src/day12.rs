@@ -33,6 +33,7 @@
 //! the damaged records.
 
 use super::*;
+use rayon::prelude::*;
 type AdvInt = usize;
 
 /// In the giant field just outside, the springs are arranged into rows. For each row, the
@@ -117,34 +118,47 @@ type AdvInt = usize;
 /// For each row, count all of the different arrangements of operational and broken springs that
 /// meet the given criteria. What is the sum of those counts?
 pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
-    let mut sum = 0;
-
-    for line in input {
-        let record: Vec<&str> = line.split_whitespace().collect();
-        let (row, groups) = (record[0], record[1]);
-        let groups: Vec<usize> = groups.split(',').map(|n| n.parse().unwrap()).collect();
-        sum += count_arrangements(row, groups);
-    }
-
-    sum
+    let input: Vec<String> = input.into_iter().collect();
+    input.par_iter()
+        .map(|line| {
+            let record: Vec<&str> = line.split_whitespace().collect();
+            let (row, groups) = (record[0], record[1]);
+            let oldrow = row;
+            // add a fake extra space to the end of the row to make the recursive problem uniform:
+            //   gaps required on right side of each spring "except the last"
+            // becomes:
+            //   gaps required on the right side of each spring
+            let row = [row.as_bytes(), b"."].concat();
+            let groups: Vec<usize> = groups.split(',').map(|n| n.parse().unwrap()).collect();
+            let oldgroups = groups.clone();
+            let oldcount = count_arrangements(&oldrow, oldgroups);
+            let count = count_fits(&row, &groups, 0);
+            if count != oldcount {
+                info!("solve_part1 (OLD) on ({oldrow:?}, {groups:?}) = {oldcount}");
+                info!("solve_part1 (NEW) on ({:?}, {groups:?}) = {count}", String::from_utf8(row).unwrap());
+                info!("");
+            }
+            count
+        }).sum()
 }
 
 pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
-    let mut sum = 0;
-
-    for line in input {
-        let record: Vec<&str> = line.split_whitespace().collect();
-        let (row, groups) = (record[0], record[1]);
-        let row = [row, row, row, row, row].concat();
-        info!("row: {row:?}");
-        let groups: Vec<usize> = groups.split(',').map(|n| n.parse().unwrap()).collect();
-        let groups = [groups.clone(), groups.clone(), groups.clone(), groups.clone(), groups.clone()].concat();
-        info!("groups: {groups:?}");
-        sum += count_arrangements(&row, groups);
-        info!("sum (rolling) -> {sum}");
-    }
-
-    sum
+    let input: Vec<String> = input.into_iter().collect();
+    input.par_iter()
+        .enumerate()
+        .map(|(i, line)| {
+            let record: Vec<&str> = line.split_whitespace().collect();
+            let (row, groups) = (record[0], record[1]);
+            let row = [row, "?", row, "?", row, "?", row, "?", row].concat();
+            //info!("row: {row:?}");
+            let row = [row.as_bytes(), b"."].concat();
+            let groups: Vec<usize> = groups.split(',').map(|n| n.parse().unwrap()).collect();
+            let groups = [groups.clone(), groups.clone(), groups.clone(), groups.clone(), groups.clone()].concat();
+            //info!("groups: {groups:?}");
+            let count = count_fits(&row, &groups, 0);
+            info!("Row: {i:3} sum = {count}");
+            count
+        }).sum()
 }
 
 fn perms(groups: &[usize], len: usize) -> Vec<Vec<usize>> {
@@ -206,7 +220,7 @@ fn draw_perm(groups: &[usize], len: usize, perm: &[usize]) -> String {
     for _ in 0..(len.saturating_sub(drawn)) {
         drawing.push('.');
     }
-    debug!("{}", drawing);
+    //debug!("{}", drawing);
     drawing
 }
 
@@ -244,16 +258,73 @@ fn count_arrangements(line: &str, groups: Vec<usize>) -> usize {
         let permstr = draw_perm(&groups, len, &perm);
         let can = can_perm_fit(&line, &permstr);
         if can {
-            debug!("FITS!");
+            debug!("{permstr} <-- FITS");
+            debug!("{line} <-- (...in here)");
+            debug!("");
             fits += 1;
-        } else {
-            debug!(" doesnt fit");
         }
-        debug!("     {permstr}");
-        debug!("  in {line}");
-        debug!("");
     }
 
+    fits
+}
+
+fn count_fits(line: &[u8], groups: &[usize], depth: usize) -> usize {
+    let to_fit = groups.iter().sum::<usize>() + groups.len();
+    let space_left = line.len();
+
+    //debug!("{0:1$}{3} {2:?}", "", depth, groups, String::from_utf8(line.to_vec()).unwrap());
+    //debug!("{0:1$}| to fit: {to_fit}, space left: {space_left}", "", depth);
+
+    // no more pieces to fit?
+    if to_fit == 0 {
+        if line.iter().any(|&b| b == b'#') {
+            //debug!("Spring slot missed, cannot place");
+            return 0;
+        } else {
+            //debug!("{0:1$}| No pieces left to fit.", "", depth);
+            //debug!("{0:1$}|===> fit!", "", depth);
+            debug!("FIT!");
+            return 1;
+        }
+    }
+
+    // less space than remaining pieces would need? 0 ways for a fit
+    if space_left < to_fit {
+        //debug!("{0:1$}| Not enough space!", "", depth);
+        return 0;
+    }
+
+    // for each possible position we could place this piece (including no positions!)
+    let mut fits = 0;
+    for offset in 0..=(space_left.saturating_sub(to_fit)) {
+        //debug!("{0:1$}| offset = {offset}", "", depth);
+        let piece = groups[0];
+
+        // check: if any part of the line we would skip actually requires a spring
+        let spring_skipped = (0..offset).any(|i| line[i] == b'#');
+        // check: if line specifies a gap along this piece
+        let gap_filled = (offset..(offset + piece)).any(|i| line[i] == b'.');
+        // check if the requisite space at the end is filled on the line
+        let end_filled = line[offset + piece] == b'#';
+        //debug!("{0:1$}| skips: {spring_skipped}, gaps: {gap_filled}, end: {end_filled}", "", depth);
+
+        if !spring_skipped && !gap_filled && !end_filled {
+            // move the groups/lines down
+            // and count how many things fit below
+            let subline = &line[(offset + piece + 1)..];
+            let subgroups = &groups[1..];
+
+            // DEBUGGING: show where our matching piece is if we can place it
+            debug!("{0:1$}{3} {2:?}", "", depth, groups, String::from_utf8(line.to_vec()).unwrap());
+            debug!("{0:1$}{2}", "", depth + offset, "^".repeat(piece) + "-");
+
+            fits += count_fits(subline, subgroups, depth + offset + piece + 1);
+        }
+    }
+
+    if fits > 0 {
+        debug!("{0:1$}|==> total: {fits}", "", depth);
+    }
     fits
 }
 
@@ -327,6 +398,43 @@ fn permute_fit2() {
     }
 
     debug_assert_eq!(fits, 4);
+}
+
+#[test]
+fn subslices() {
+    log_init();
+    fn recur(s: &[i32]) {
+        debug!("s = {:?} | s.len() = {}", s, s.len());
+        if s.len() != 0 {
+            recur(&s[1..]);
+        }
+    }
+    let x = vec![3, 2, 1];
+    recur(&x);
+}
+
+#[test]
+fn debugpart1new1a() {
+    log_init();
+    let line = b".#?????####.?.#?.";
+    let groups = [1, 1, 5, 1];
+    assert_eq!(count_fits(line, &groups, 0), 2);
+}
+
+#[test]
+fn debugpart1new1b() {
+    log_init();
+    let line = ".#?????####.?.#?";
+    let groups = [1, 1, 5, 1];
+    assert_eq!(count_arrangements(&line, groups.to_vec()), 2);
+}
+
+#[test]
+fn debugex1() {
+    log_init();
+    let line = b"???.###.";
+    let groups = [1, 1, 3];
+    assert_eq!(count_fits(line, &groups, 0), 1);
 }
 
 testcase!(ex1, solve_part1, "example", 21);
