@@ -130,7 +130,21 @@ pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
 }
 
 pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
-    todo!()
+    let mut sum = 0;
+
+    for line in input {
+        let record: Vec<&str> = line.split_whitespace().collect();
+        let (row, groups) = (record[0], record[1]);
+        let row = [row, row, row, row, row].concat();
+        info!("row: {row:?}");
+        let groups: Vec<usize> = groups.split(',').map(|n| n.parse().unwrap()).collect();
+        let groups = [groups.clone(), groups.clone(), groups.clone(), groups.clone(), groups.clone()].concat();
+        info!("groups: {groups:?}");
+        sum += count_arrangements(&row, groups);
+        info!("sum (rolling) -> {sum}");
+    }
+
+    sum
 }
 
 fn perms(groups: &[usize], len: usize) -> Vec<Vec<usize>> {
@@ -202,7 +216,7 @@ fn draw_perms(groups: &[usize], len: usize, perms: &[Vec<usize>]) {
     }
 }
 
-fn can_perm_fit(line: &str, groups: &[usize], permstr: &str) -> bool {
+fn can_perm_fit(line: &str, permstr: &str) -> bool {
     let line_bytes = line.as_bytes();
     let perm_bytes = permstr.as_bytes();
 
@@ -228,7 +242,7 @@ fn count_arrangements(line: &str, groups: Vec<usize>) -> usize {
     let mut fits = 0;
     for perm in perms {
         let permstr = draw_perm(&groups, len, &perm);
-        let can = can_perm_fit(&line, &groups, &permstr);
+        let can = can_perm_fit(&line, &permstr);
         if can {
             debug!("FITS!");
             fits += 1;
@@ -274,7 +288,7 @@ fn permute_fit1() {
     let mut fits = 0;
     for perm in perms {
         let permstr = draw_perm(&groups, len, &perm);
-        let can = can_perm_fit(&line, &groups, &permstr);
+        let can = can_perm_fit(&line, &permstr);
         if can {
             debug!("FITS!");
             fits += 1;
@@ -300,7 +314,7 @@ fn permute_fit2() {
     let mut fits = 0;
     for perm in perms {
         let permstr = draw_perm(&groups, len, &perm);
-        let can = can_perm_fit(&line, &groups, &permstr);
+        let can = can_perm_fit(&line, &permstr);
         if can {
             debug!("FITS!");
             fits += 1;
