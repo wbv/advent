@@ -10,8 +10,6 @@
 //!
 //! Maybe you can help him with the analysis to speed things up?
 
-
-
 #![cfg(not(doctest))]
 
 use super::*;
@@ -129,7 +127,7 @@ use super::*;
 ///
 /// Expand the universe, then find the length of the shortest path between every pair of galaxies.
 /// What is the sum of these lengths?
-pub fn solve_part1<L: Iterator<Item = String>>(input: L) -> AdvInt {
+pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     // part1 is just part2 but with a factor-of-2 expansion
     solve_part2(input, 2)
 }
@@ -151,7 +149,7 @@ pub fn solve_part1<L: Iterator<Item = String>>(input: L) -> AdvInt {
 /// Starting with the same initial image, expand the universe according to these new rules, then
 /// find the length of the shortest path between every pair of galaxies. What is the sum of these
 /// lengths?
-pub fn solve_part2<L: Iterator<Item = String>>(input: L, expansion_factor: usize) -> AdvInt {
+pub fn solve_part2<L: IntoIterator<Item = String>>(input: L, expansion_factor: usize) -> AdvInt {
     let universe = Universe::from(input);
 
     let empty_cols = universe.empty_cols();
@@ -202,10 +200,10 @@ struct Universe {
 }
 
 impl Universe {
-    fn from<L: Iterator<Item = String>>(lines: L) -> Self {
+    fn from<L: IntoIterator<Item = String>>(lines: L) -> Self {
         let mut width = 0;
         let mut height = 0;
-        let map = lines
+        let map = lines.into_iter()
             .flat_map(|s| {
                 width = width.max(s.len());
                 height += 1;
@@ -256,17 +254,8 @@ impl Universe {
     }
 }
 
-#[test]
-fn ex1() { testcase!(solve_part1, "example", 374); }
-
-#[test]
-fn part1() { testcase!(solve_part1, "input", 9795148); }
-
-#[test]
-fn ex2() { testcase!(solve_part2, "example", 1030, 10); }
-
-#[test]
-fn ex3() { testcase!(solve_part2, "example", 8410, 100); }
-
-#[test]
-fn part2() { testcase!(solve_part2, "input", 650672493820, 1_000_000); }
+testcase!(ex1, solve_part1, "example", 374);
+testcase!(part1, solve_part1, "input", 9795148);
+testcase!(ex2, solve_part2, "example", 1030, 10);
+testcase!(ex3, solve_part2, "example", 8410, 100);
+testcase!(part2, solve_part2, "input", 650672493820, 1_000_000);

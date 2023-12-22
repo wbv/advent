@@ -21,8 +21,6 @@
 
 #![cfg(not(doctest))]
 
-use std::io::Lines;
-
 use regex::Regex;
 
 use super::*;
@@ -144,11 +142,11 @@ use super::*;
 /// So, the lowest location number in this example is 35.
 ///
 /// What is the lowest location number that corresponds to any of the initial seed numbers?
-pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
-    let mut lines = input.lines();
+pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let mut lines = input.into_iter();
 
     // list of seeds
-    let seeds = lines.next().unwrap().unwrap()
+    let seeds = lines.next().unwrap()
         .split_once(':').unwrap().1
         .split_whitespace()
         .map(|word| word.parse().unwrap())
@@ -163,7 +161,7 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
         .map(|&s| almanac.translations.get_loc(s))
         .reduce(|acc, loc| acc.min(loc));
 
-    Ok(min_loc.unwrap())
+    min_loc.unwrap()
 }
 
 
@@ -193,11 +191,11 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
 ///
 /// Consider all of the initial seed numbers listed in the ranges on the first line of the almanac.
 /// What is the lowest location number that corresponds to any of the initial seed numbers?
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<isize> {
-    let mut lines = input.lines();
+pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let mut lines = input.into_iter();
 
     // list of seeds
-    let seeds = lines.next().unwrap().unwrap()
+    let seeds = lines.next().unwrap()
         .split_once(':').unwrap().1
         .split_whitespace()
         .map(|word| word.parse().unwrap())
@@ -223,8 +221,10 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<isize> {
         ).map(|s| almanac.translations.get_loc(s))
         .reduce(|acc, loc| acc.min(loc));
 
-    Ok(min_loc.unwrap())
+    min_loc.unwrap()
 }
+
+type AdvInt = isize;
 
 #[derive(Debug)]
 struct Offset {
@@ -259,7 +259,7 @@ struct Almanac {
 }
 
 impl Almanac {
-    pub fn from_lines<B: BufRead>(lines: &mut Lines<B>) -> Self {
+    pub fn from_lines<L: Iterator<Item = String>>(lines: &mut L) -> Self {
         // number-matcher
         let re = Regex::new("([0-9]+) ([0-9]+) ([0-9]+)").unwrap();
 
@@ -278,7 +278,7 @@ impl Almanac {
 
         for trans in &mut translations.inner {
             lines.next(); // skip header line
-            while let Some(Ok(line)) = lines.next() {
+            while let Some(line) = lines.next() {
                 if line.is_empty() {
                     break;
                 }
@@ -324,3 +324,8 @@ impl Almanac {
         Self { translations, discontinuities }
     }
 }
+
+testcase!(ex1, solve_part1, "example", 35);
+testcase!(part1, solve_part1, "input", 382895070);
+testcase!(ex2, solve_part2, "example", 46);
+testcase!(part2, solve_part2, "input", 17729182);

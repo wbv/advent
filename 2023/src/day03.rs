@@ -50,13 +50,13 @@ use regex::bytes::Regex;
 ///
 /// Of course, the actual engine schematic is much larger. What is the sum of all of the part
 /// numbers in the engine schematic?
-pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
-    let sch = Schematic::from_bufread(input);
+pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let sch = Schematic::from_lines(input.into_iter());
     let sum = sch.all_nums.iter()
         .filter(|&num| num.near_symbol)
         .map(|num| num.value)
         .sum();
-    Ok(sum)
+    sum
 }
 
 /// # Product of Gear Ratios
@@ -99,14 +99,16 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
 /// Adding up all of the gear ratios produces 467835.
 ///
 /// What is the sum of all of the gear ratios in your engine schematic?
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<usize> {
-    let sch = Schematic::from_bufread(input);
+pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let sch = Schematic::from_lines(input.into_iter());
     let sum = sch.gears.values()
         .filter(|g| g.nums.len() == 2)
         .map(|g| g.nums[0].value * g.nums[1].value)
         .sum();
-    Ok(sum)
+    sum
 }
+
+type AdvInt = usize;
 
 #[derive(Default, Debug)]
 struct Schematic {
@@ -136,10 +138,9 @@ struct Gear {
 
 
 impl Schematic {
-    pub fn from_bufread<B: BufRead>(buf: B) -> Self {
+    pub fn from_lines<L: IntoIterator<Item = String>>(lines: L) -> Self {
         let mut schematic = Schematic::default();
-        let mut lines = buf.lines();
-        while let Some(Ok(line)) = lines.next() {
+        for line in lines {
             let line = line.as_bytes().to_vec();
             schematic.width = schematic.width.max(line.len());
             schematic.height += 1;
@@ -200,3 +201,8 @@ impl Schematic {
         }
     }
 }
+
+testcase!(ex1, solve_part1, "example", 4361);
+testcase!(part1, solve_part1, "input", 556057);
+testcase!(ex2, solve_part2, "example", 467835);
+testcase!(part2, solve_part2, "input", 82824352);

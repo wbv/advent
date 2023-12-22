@@ -82,16 +82,16 @@ use super::*;
 ///
 /// Determine the number of ways you could beat the record in each race. What do you get if you
 /// multiply these numbers together?
-pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
-    let mut lines = input.lines();
+pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let mut lines = input.into_iter();
 
-    let times = lines.next().unwrap().unwrap()
+    let times = lines.next().unwrap()
         .split_once(':').unwrap().1
         .split_whitespace()
         .map(|v| v.parse().unwrap())
         .collect::<Vec<isize>>();
 
-    let records = lines.next().unwrap().unwrap()
+    let records = lines.next().unwrap()
         .split_once(':').unwrap().1
         .split_whitespace()
         .map(|v| v.parse().unwrap())
@@ -101,7 +101,7 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
         .map(|(time, record)| winning_waits(time, record))
         .reduce(|acc, w| acc*w).unwrap();
 
-    Ok(prod_wins)
+    prod_wins
 }
 
 /// # Bad Kerning
@@ -130,10 +130,10 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
 /// record, a total of 71503 ways!
 ///
 /// How many ways can you beat the record in this one much longer race?
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<isize> {
-    let mut lines = input.lines();
+pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let mut lines = input.into_iter();
 
-    let time_str = lines.next().unwrap().unwrap()
+    let time_str = lines.next().unwrap()
         .split_once(':').unwrap().1
         .chars()
         .filter(|ch| !ch.is_ascii_whitespace())
@@ -141,16 +141,17 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<isize> {
 
     let time = time_str.parse().unwrap();
 
-    let record_str = lines.next().unwrap().unwrap()
+    let record_str = lines.next().unwrap()
         .split_once(':').unwrap().1
         .chars()
         .filter(|ch| !ch.is_ascii_whitespace())
         .collect::<String>();
     let record = record_str.parse().unwrap();
 
-    Ok(winning_waits(time, record))
+    winning_waits(time, record)
 }
 
+type AdvInt = isize;
 /// Computes distance traveled in a race of `total_time` given a `wait` time.
 fn distance(wait: isize, total_time: isize) -> isize {
     (wait * total_time - wait * wait).max(0)
@@ -189,3 +190,8 @@ fn winning_waits(time: isize, record: isize) -> isize {
     // return the number of winning wait-times (inclusive of both bounds!)
     upper - lower + 1
 }
+
+testcase!(ex1, solve_part1, "example", 288);
+testcase!(part1, solve_part1, "input", 449550);
+testcase!(ex2, solve_part2, "example", 71503);
+testcase!(part2, solve_part2, "input", 28360140);

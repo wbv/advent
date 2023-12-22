@@ -99,7 +99,7 @@ use super::*;
 /// the total winnings in this example are 6440.
 ///
 /// Find the rank of every hand in your set. What are the total winnings?
-pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
+pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     get_winnings(input, RuleSet::Standard)
 }
 
@@ -138,13 +138,15 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
 /// Using the new joker rule, find the rank of every hand in your set. What are the new total
 /// winnings?
 ///
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<isize> {
+pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     get_winnings(input, RuleSet::Joker)
 }
 
-fn get_winnings<B: BufRead>(input: B, rules: RuleSet) -> std::io::Result<isize> {
-    let hands = input.lines()
-        .map(|l| Hand::new(l.unwrap(), rules))
+type AdvInt = isize;
+
+fn get_winnings<L: IntoIterator<Item = String>>(input: L, rules: RuleSet) -> AdvInt {
+    let hands = input.into_iter()
+        .map(|l| Hand::new(l, rules))
         .collect::<BinaryHeap<_>>()
         .into_sorted_vec();
 
@@ -157,7 +159,7 @@ fn get_winnings<B: BufRead>(input: B, rules: RuleSet) -> std::io::Result<isize> 
         })
         .sum();
 
-    Ok(winnings)
+    winnings
 }
 
 #[derive(Ord, PartialOrd, Eq, PartialEq, Debug)]
@@ -362,3 +364,8 @@ const fn hand_strength_joker(jokers: usize, first: Option<usize>, second: Option
     }
 }
 
+
+testcase!(ex1, solve_part1, "example", 6440);
+testcase!(part1, solve_part1, "input", 249748283);
+testcase!(ex2, solve_part2, "example", 5905);
+testcase!(part2, solve_part2, "input", 248029057);

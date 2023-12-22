@@ -53,13 +53,11 @@ use regex::Regex;
 ///
 /// Determine which games would have been possible if the bag had been loaded with only 12 red
 /// cubes, 13 green cubes, and 14 blue cubes. What is the sum of the IDs of those games?
-pub fn solve_part1<B: BufRead>(input: B, red: usize, green: usize, blue: usize) ->
-std::io::Result<usize> {
+pub fn solve_part1<L: IntoIterator<Item = String>>(input: L, red: usize, green: usize, blue: usize) -> AdvInt {
     info!("Solving part 1...");
-    let mut lines = input.lines();
     let mut sum_ids = 0;
 
-    while let Some(Ok(line)) = lines.next() {
+    for line in input {
         debug!("got line: {}", line);
         let game = Game::from_line(line).unwrap();
         info!("resulting game: {game:?}");
@@ -69,7 +67,7 @@ std::io::Result<usize> {
         }
     }
 
-    Ok(sum_ids)
+    sum_ids
 }
 
 /// # Powers of Minimums
@@ -109,20 +107,21 @@ std::io::Result<usize> {
 ///
 /// For each game, find the minimum set of cubes that must have been present. What is the sum of
 /// the power of these sets?
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<usize> {
+pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     info!("Solving part 2...");
-    let mut lines = input.lines();
     let mut sum_powers = 0;
 
-    while let Some(Ok(line)) = lines.next() {
+    for line in input {
         debug!("got line: {}", line);
         let game = Game::from_line(line).unwrap();
         info!("resulting game: {game:?}");
         sum_powers += game.power();
     }
 
-    Ok(sum_powers)
+    sum_powers
 }
+
+type AdvInt = usize;
 
 #[derive(Debug, Clone)]
 struct Game {
@@ -180,3 +179,9 @@ impl Game {
         self.reds * self.greens * self.blues
     }
 }
+
+
+testcase!(ex1, solve_part1, "example", 8, 12, 13, 14);
+testcase!(part1, solve_part1, "input", 2541, 12, 13, 14);
+testcase!(ex2, solve_part2, "example", 2286);
+testcase!(part2, solve_part2, "input", 66016);

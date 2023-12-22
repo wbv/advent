@@ -56,18 +56,17 @@ use super::*;
 /// ```
 ///
 /// Starting at AAA, follow the left/right instructions. How many steps are required to reach ZZZ?
-pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
-    let mut lines = input.lines();
+pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let mut lines = input.into_iter();
     let instruction = lines.next()
-        .expect("Premature end of input file")?
+        .expect("Premature end of input file")
         .chars()
         .collect::<Vec<_>>();
 
     // grab the next line, verify it's empty
-    debug_assert!(lines.next().expect("early EOF")?.is_empty());
+    debug_assert!(lines.next().expect("early EOF").is_empty());
 
     let map = lines.filter_map(|line| {
-        let line = line.expect("I/O error on line");
         let bytes: [u8; 16] = line.as_bytes().try_into().ok()?;
         let node = bytes[0..3].try_into().unwrap();
         let left = bytes[7..10].try_into().unwrap();
@@ -92,7 +91,7 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
         steps += 1;
     }
 
-    Ok(steps)
+    steps
 }
 
 /// --- Part Two ---
@@ -141,18 +140,17 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<isize> {
 ///
 /// Simultaneously start on every node that ends with A. How many steps does it take before you're
 /// only on nodes that end with Z?
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<u128> {
-    let mut lines = input.lines();
+pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let mut lines = input.into_iter();
     let instruction = lines.next()
-        .expect("Premature end of input file")?
+        .expect("Premature end of input file")
         .chars()
         .collect::<Vec<_>>();
 
     // grab the next line, verify it's empty
-    debug_assert!(lines.next().expect("early EOF")?.is_empty());
+    debug_assert!(lines.next().expect("early EOF").is_empty());
 
     let map = lines.filter_map(|line| {
-        let line = line.expect("I/O error on line");
         let bytes: [u8; 16] = line.as_bytes().try_into().ok()?;
         let node = bytes[0..3].try_into().unwrap();
         let left = bytes[7..10].try_into().unwrap();
@@ -176,7 +174,7 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<u128> {
     debug!("Instructions Length: {}", instruction.len());
 
     // run our iterations until every pair has looped once
-    let mut step = 0u128;
+    let mut step = 0;
     while traversals.iter().any(|t| t.repeat.is_none()) {
 
         // step 1 = the location after the first traverse
@@ -215,25 +213,27 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<u128> {
         .reduce(|lcm, mut cur| {
             // fun fact, the loops are prime numbers times the instruction length
             // (but NOT in the example code, so we have to condition it here >.>)
-            if cur % (instruction.len() as u128) == 0 && cur != instruction.len() as u128 {
-                debug!("shortening cur {cur} to {}", cur / (instruction.len() as u128));
-                cur /= instruction.len() as u128
+            if cur % (instruction.len() as AdvInt) == 0 && cur != instruction.len() as AdvInt {
+                debug!("shortening cur {cur} to {}", cur / (instruction.len() as AdvInt));
+                cur /= instruction.len() as AdvInt
             };
             lcm * cur
         });
 
-    Ok(lcm.unwrap())
+    lcm.unwrap()
 }
+
+type AdvInt = u128;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 struct Repeat {
-    start: u128,
-    end: u128,
+    start: AdvInt,
+    end: AdvInt,
 }
 
 struct Traversal {
     node: Node,
-    ends: Vec<u128>,
+    ends: Vec<AdvInt>,
     repeat: Option<Repeat>,
 }
 
@@ -293,3 +293,10 @@ impl Node {
         self.0[2] == b'Z'
     }
 }
+
+
+testcase!(ex1, solve_part1, "example", 2);
+testcase!(ex2, solve_part1, "example2", 6);
+testcase!(part1, solve_part1, "input", 16343);
+testcase!(ex3, solve_part2, "example3", 6);
+testcase!(part2, solve_part2, "input", 15299095336639);

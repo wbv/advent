@@ -35,12 +35,11 @@ use super::*;
 /// these together produces 142.
 ///
 /// Consider your entire calibration document. What is the sum of all of the calibration values?
-pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
+pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     info!("Solving (Part 1)...");
-    let mut sum = 0usize;
+    let mut sum = 0;
 
-    let mut lines = input.lines();
-    while let Some(Ok(line)) = lines.next() {
+    for line in input {
         let line = line.as_bytes();
         let first = line.iter().find(|c| c.is_ascii_digit());
         let last = line.iter().rfind(|c| c.is_ascii_digit());
@@ -60,7 +59,7 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
         }
     }
 
-    Ok(sum)
+    sum
 }
 
 /// # Adding Numerals
@@ -86,12 +85,11 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
 /// together produces 281.
 ///
 /// What is the sum of all of the calibration values?
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<usize> {
+pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     info!("Solving (Part 2)...");
     let mut sum = 0usize;
 
-    let mut lines = input.lines();
-    while let Some(Ok(line)) = lines.next() {
+    for line in input {
         let first = find_first_numeral(&line);
         let last = find_last_numeral(&line);
         match (first, last) {
@@ -110,8 +108,10 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<usize> {
         }
     }
 
-    Ok(sum)
+    sum
 }
+
+type AdvInt = usize;
 
 const PAIRS: [(usize, &str); 18] = [
     (1, "one"),
@@ -198,3 +198,8 @@ fn find_last_numeral(line: &String) -> Option<Finding> {
 
     numeral
 }
+
+testcase!(ex1, solve_part1, "example", 142);
+testcase!(part1, solve_part1, "input", 53194);
+testcase!(ex2, solve_part2, "example2", 281);
+testcase!(part2, solve_part2, "input", 54249);

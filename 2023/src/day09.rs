@@ -119,10 +119,9 @@ use super::*;
 /// If you find the next value for each history in this example and add them together, you get 114.
 ///
 /// Analyze your OASIS report and extrapolate the next value for each history. What is the sum of these extrapolated values?
-pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
-    let all_seqs = input.lines().map(|s|
-        s.expect("i/o error")
-            .split_whitespace()
+pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let all_seqs = input.into_iter().map(|s|
+        s.split_whitespace()
             .map(|n| n.parse::<AdvInt>().expect("not a number"))
             .collect::<Vec<_>>());
 
@@ -139,7 +138,7 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
             .sum::<AdvInt>();
     }
 
-    Ok(sum)
+    sum
 }
 
 type AdvInt = isize;
@@ -179,10 +178,9 @@ fn diff(seq: &[AdvInt]) -> Vec<AdvInt> {
 /// Analyze your OASIS report again, this time extrapolating the previous value for each history.
 /// What is the sum of these extrapolated values?
 ///
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
-    let all_seqs = input.lines().map(|s|
-        s.expect("i/o error")
-            .split_whitespace()
+pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let all_seqs = input.into_iter().map(|s|
+        s.split_whitespace()
             .map(|n| n.parse::<AdvInt>().expect("not a number"))
             .collect::<Vec<_>>());
 
@@ -200,5 +198,11 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
             .unwrap();
     }
 
-    Ok(sum)
+    sum
 }
+
+testcase!(ex1, solve_part1, "example", 114);
+testcase!(part1, solve_part1, "input", 1953784198);
+testcase!(ex2, solve_part2, "example", 2);
+testcase!(part2, solve_part2, "input", 957);
+

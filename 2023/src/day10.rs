@@ -150,9 +150,9 @@ use super::*;
 ///
 /// Find the single giant loop starting at S. How many steps along the loop does it take to get
 /// from the starting position to the point farthest from the starting position?
-pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
-    let mut maze = PipeMaze::from(input.lines().map(|l| l.expect("i/o error on lines")));
-    Ok(maze.traverse())
+pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let mut maze = PipeMaze::from(input);
+    maze.traverse()
 }
 
 /// # Enclosed Area
@@ -279,8 +279,8 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
 /// Figure out whether you have time to search for the nest by calculating the area within the
 /// loop. How many tiles are enclosed by the loop?
 ///
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
-    let mut maze = PipeMaze::from(input.lines().map(|l| l.expect("i/o error on lines")));
+pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
+    let mut maze = PipeMaze::from(input.into_iter());
     maze.traverse();
 
     debug!(">>>>> Traverse done, performing longitudinal collision detection' <<<<<");
@@ -319,7 +319,7 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<AdvInt> {
         }
     }
 
-    Ok(enclosed)
+    enclosed
 }
 
 /// Numeric type used for the answer to this puzzle
@@ -432,11 +432,11 @@ struct PipeMaze {
 }
 
 impl PipeMaze {
-    fn from<B: Iterator<Item = String>>(lines: B) -> PipeMaze {
+    fn from<L: IntoIterator<Item = String>>(lines: L) -> PipeMaze {
         let (mut width, mut height) = (0, 0);
         let mut flatmap = vec![];
 
-        let lines = lines.map(|l| {
+        let lines = lines.into_iter().map(|l| {
             l.as_bytes()
                 .to_owned()
                 .iter()
@@ -453,7 +453,7 @@ impl PipeMaze {
         debug_assert_eq!(height * width, flatmap.len());
 
         // double-check that we only have a single start-pipe
-        debug_assert_eq!(flatmap.iter().filter(|p| p.kind == b'S').count(), 1);
+        debug_assert_eq!(flatmap.iter().filter(|&&p| p.kind == b'S').count(), 1);
 
         debug!("the map:");
         for y in 0..height {
@@ -585,3 +585,12 @@ impl From<bool> for Crossed {
         Crossed { north: value, south: value }
     }
 }
+
+testcase!(ex1, solve_part1, "example1", 4);
+testcase!(ex2, solve_part1, "example2", 4);
+testcase!(ex3, solve_part1, "example3", 8);
+testcase!(part1, solve_part1, "input", 6842);
+testcase!(ex4, solve_part2, "example4", 4);
+testcase!(ex5, solve_part2, "example5", 4);
+testcase!(ex6, solve_part2, "example6", 8);
+testcase!(part2, solve_part2, "input", 393);

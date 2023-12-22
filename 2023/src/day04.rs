@@ -65,12 +65,11 @@ use regex::Regex;
 /// So, in this example, the Elf's pile of scratchcards is worth 13 points.
 ///
 /// Take a seat in the large pile of colorful cards. How many points are they worth in total?
-pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
+pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     let mut sum = 0;
     let re = Regex::new("[0-9]+").unwrap();
 
-    let mut lines = input.lines();
-    while let Some(Ok(line)) = lines.next() {
+    for line in input {
         let (_, line) = line.split_once(':').unwrap();
         let mut line = line.split(|ch| ch == '|');
         let (winning, ours) = (line.next().unwrap(), line.next().unwrap());
@@ -87,7 +86,7 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
         }
     }
 
-    Ok(sum)
+    sum
 }
 
 /// # Exponential Winnings
@@ -138,12 +137,11 @@ pub fn solve_part1<B: BufRead>(input: B) -> std::io::Result<usize> {
 ///
 /// Process all of the original and copied scratchcards until no more scratchcards are won.
 /// Including the original set of scratchcards, how many total scratchcards do you end up with?
-pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<usize> {
+pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     let mut matchlist = vec![];
     let re = Regex::new("[0-9]+").unwrap();
 
-    let mut lines = input.lines();
-    while let Some(Ok(line)) = lines.next() {
+    for line in input {
         let (_, line) = line.split_once(':').unwrap();
         let mut line = line.split(|ch| ch == '|');
         let (winning, ours) = (line.next().unwrap(), line.next().unwrap());
@@ -167,5 +165,13 @@ pub fn solve_part2<B: BufRead>(input: B) -> std::io::Result<usize> {
         }
         debug!("cardcounts = {:?}", cardcounts);
     }
-    Ok(cardcounts.iter().sum())
+
+    cardcounts.iter().sum()
 }
+
+type AdvInt = usize;
+
+testcase!(ex1, solve_part1, "example", 13);
+testcase!(part1, solve_part1, "input", 20667);
+testcase!(ex2, solve_part2, "example", 30);
+testcase!(part2, solve_part2, "input", 5833065);
