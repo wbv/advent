@@ -3,6 +3,16 @@ name = "aoc2023"
 version = "0.1.0"
 edition = "2021"
 
+[profile.release]
+lto = true
+panic = "abort"
+
+[profile.release.build-override]
+opt-level = 3
+
+[profile.release.package."*"]
+opt-level = 3
+
 [dependencies]
 env_logger = "0.10.1"
 log = { version = "0.4.20", features = ["std"] }
