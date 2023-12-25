@@ -1,5 +1,7 @@
 #![cfg(not(doctest))]
 
+use std::collections::HashSet;
+
 /// # Point of Incidence
 ///
 /// With your help, the hot springs team locates an appropriate spring which launches you neatly
@@ -17,6 +19,7 @@
 /// the fallen mirrors have lodged into the ash at strange angles. Because the terrain is all one
 /// color, it's hard to tell where it's safe to walk or where you're about to run into a mirror.
 
+use rayon::prelude::*;
 use super::*;
 type AdvInt = usize;
 
@@ -97,17 +100,11 @@ type AdvInt = usize;
 /// Find the line of reflection in each of the patterns in your notes. What number do you get after
 /// summarizing all of your notes?
 pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
-    let patterns = input
-        .into_iter()
+    input.into_iter()
         .collect::<Vec<String>>()
         .split(|line| line.is_empty())
-        .map(|lines| lines.to_vec())
-        .collect::<Vec<Vec<String>>>();
-
-    patterns.iter().map(|pattern| {
-        find_vertical_mirror(&pattern).get(0).unwrap_or(&0)
-            + find_horizontal_mirror(&pattern).get(0).unwrap_or(&0) * 100
-    }).sum()
+        .map(|p| v_mirrors(p).get(0).unwrap_or(&0) + h_mirrors(p).get(0).unwrap_or(&0) * 100)
+        .sum()
 }
 
 /// # Smudges
@@ -183,10 +180,58 @@ pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
 /// In each pattern, fix the smudge and find the different line of reflection. What number do you
 /// get after summarizing the new reflection line in each pattern in your notes?
 pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
-    todo!()
+    input.into_iter()
+        .collect::<Vec<String>>()
+        .split(|line| line.is_empty())
+        .map(|l| l.to_vec())
+        .collect::<Vec<Vec<String>>>()
+        .par_iter()
+        .map(|pat| -> usize {
+            // calculate which mirrors we already had
+            let init_v = v_mirrors(pat);
+            let init_h = h_mirrors(pat);
+            let mut new_v = HashSet::<usize>::new();
+            let mut new_h = HashSet::<usize>::new();
+
+            // for each position (row, col) in a pattern
+            for row in 0..pat.len() {
+                for col in 0..pat.get(0).map_or(0, |line| line.len()) {
+
+                    // create a copy of the original pattern with that position "de-smudged"
+                    let mut smudged = pat.clone();
+                    let mut newrow = smudged[row].clone().into_bytes();
+                    newrow.get_mut(col)
+                        .map(|ch| *ch = match ch {
+                            b'#' => b'.',
+                            b'.' => b'#',
+                            _ => panic!("mutating invalid character"),
+                        });
+                    smudged[row] = String::from_utf8(newrow).unwrap();
+
+                    // find any new mirroring points (excluding ones we already knew about)
+                    v_mirrors(&smudged)
+                        .into_iter()
+                        .filter(|x| !init_v.contains(x))
+                        .for_each(|x| {
+                            debug!("smudge: {row}, {col} --> new vertical mirror found at {x}");
+                            new_v.insert(x);
+                        });
+                    h_mirrors(&smudged)
+                        .into_iter()
+                        .filter(|x| !init_h.contains(x))
+                        .for_each(|x| {
+                            debug!("smudge: {row}, {col} --> new horizontal mirror found at {x}");
+                            new_h.insert(x);
+                        });
+                }
+            }
+            // return the calculation for any new mirror edges
+            new_v.into_iter().sum::<usize>() + (100 * new_h.into_iter().sum::<usize>())
+        })
+        .sum()
 }
 
-fn find_vertical_mirror(pat: &[String]) -> Vec<usize> {
+fn v_mirrors(pat: &[String]) -> Vec<usize> {
     let width = pat.get(0).map(|line| line.len()).unwrap_or(0);
     // for each column that could be a mirror point
     (1..width).filter(|&col| {
@@ -202,7 +247,7 @@ fn find_vertical_mirror(pat: &[String]) -> Vec<usize> {
     }).collect()
 }
 
-fn find_horizontal_mirror(pat: &[String]) -> Vec<usize> {
+fn h_mirrors(pat: &[String]) -> Vec<usize> {
     let height = pat.len();
     // for each row that could be a mirror point
     (1..height).filter(|&row| {
@@ -219,6 +264,6 @@ fn find_horizontal_mirror(pat: &[String]) -> Vec<usize> {
 testcase!(ex1, solve_part1, "example1", 5);
 testcase!(ex2, solve_part1, "example2", 400);
 testcase!(part1, solve_part1, "input", 33122);
-//testcase!(ex3, solve_part2, "example1", 300);
-//testcase!(ex4, solve_part2, "example2", 100);
-//testcase!(part2, solve_part2, "input", 0);
+testcase!(ex3, solve_part2, "example1", 300);
+testcase!(ex4, solve_part2, "example2", 100);
+testcase!(part2, solve_part2, "input", 32312);
