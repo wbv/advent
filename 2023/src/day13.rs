@@ -19,7 +19,6 @@ use std::collections::HashSet;
 /// the fallen mirrors have lodged into the ash at strange angles. Because the terrain is all one
 /// color, it's hard to tell where it's safe to walk or where you're about to run into a mirror.
 
-use rayon::prelude::*;
 use super::*;
 type AdvInt = usize;
 
@@ -183,9 +182,6 @@ pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     input.into_iter()
         .collect::<Vec<String>>()
         .split(|line| line.is_empty())
-        .map(|l| l.to_vec())
-        .collect::<Vec<Vec<String>>>()
-        .par_iter()
         .map(|pat| -> usize {
             // calculate which mirrors we already had
             let init_v = v_mirrors(pat);
@@ -198,7 +194,7 @@ pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
                 for col in 0..pat.get(0).map_or(0, |line| line.len()) {
 
                     // create a copy of the original pattern with that position "de-smudged"
-                    let mut smudged = pat.clone();
+                    let mut smudged = pat.to_vec();
                     let mut newrow = smudged[row].clone().into_bytes();
                     newrow.get_mut(col)
                         .map(|ch| *ch = match ch {
