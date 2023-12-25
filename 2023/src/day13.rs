@@ -97,31 +97,17 @@ type AdvInt = usize;
 /// Find the line of reflection in each of the patterns in your notes. What number do you get after
 /// summarizing all of your notes?
 pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
-    let mut patterns = Vec::<Vec<String>>::new();
-    let mut pattern = Vec::<String>::new();
-    for line in input {
-        if line.is_empty() {
-            patterns.push(pattern.clone());
-            debug!("PATTERN:");
-            for p in &pattern {
-                debug!("{p}");
-            }
-            pattern.clear();
-        } else {
-            pattern.push(line);
-        }
-    }
-    if !pattern.is_empty() {
-        patterns.push(pattern);
-    }
+    let patterns = input
+        .into_iter()
+        .collect::<Vec<String>>()
+        .split(|line| line.is_empty())
+        .map(|lines| lines.to_vec())
+        .collect::<Vec<Vec<String>>>();
 
-    let mut sum = 0;
-    for pattern in patterns {
-        sum += find_vertical_mirror(&pattern).unwrap_or(0);
-        sum += find_horizontal_mirror(&pattern).unwrap_or(0) * 100;
-        debug!("SUM: {sum}");
-    }
-    sum
+    patterns.iter().map(|pattern| {
+        find_vertical_mirror(&pattern).get(0).unwrap_or(&0)
+            + find_horizontal_mirror(&pattern).get(0).unwrap_or(&0) * 100
+    }).sum()
 }
 
 /// # Smudges
@@ -200,57 +186,39 @@ pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     todo!()
 }
 
-fn find_vertical_mirror(pat: &Vec<String>) -> Option<usize> {
+fn find_vertical_mirror(pat: &[String]) -> Vec<usize> {
     let width = pat.get(0).map(|line| line.len()).unwrap_or(0);
     // for each column that could be a mirror point
-    for col in 1..width {
+    (1..width).filter(|&col| {
         // verify that on all lines
-        let is_mirrored = pat.iter().all(|line| {
+        pat.iter().all(|line| {
             // the left and right characters are mirrored
             let (left, right) = line.split_at(col);
             left.chars()
                 .rev()
                 .zip(right.chars())
                 .all(|(l, r)| l == r)
-        });
-
-        // return early: assume the first mirror we find is the only one :)
-        if is_mirrored {
-            return Some(col);
-        }
-    }
-
-    // no mirrors found
-    None
+        })
+    }).collect()
 }
 
-fn find_horizontal_mirror(pat: &Vec<String>) -> Option<usize> {
+fn find_horizontal_mirror(pat: &[String]) -> Vec<usize> {
     let height = pat.len();
     // for each row that could be a mirror point
-    for row in 1..height {
-        let is_mirrored = {
-            // verify that lines above and below are mirrors
-            let (above, below) = pat.split_at(row);
-            above.iter()
-                .rev()
-                .zip(below.iter())
-                .all(|(a, b)| a == b)
-        };
-
-        // return early: assume the first mirror we find is the only one :)
-        if is_mirrored {
-            return Some(row);
-        }
-    }
-
-    // no mirrors found
-    None
+    (1..height).filter(|&row| {
+        // verify that lines above and below are mirrors
+        let (above, below) = pat.split_at(row);
+        above.iter()
+            .rev()
+            .zip(below.iter())
+            .all(|(a, b)| a == b)
+    }).collect()
 }
-
 
 
 testcase!(ex1, solve_part1, "example1", 5);
 testcase!(ex2, solve_part1, "example2", 400);
 testcase!(part1, solve_part1, "input", 33122);
-//testcase!(ex2, solve_part2, "example", 0);
+//testcase!(ex3, solve_part2, "example1", 300);
+//testcase!(ex4, solve_part2, "example2", 100);
 //testcase!(part2, solve_part2, "input", 0);
