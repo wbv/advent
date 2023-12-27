@@ -51,7 +51,7 @@ use regex::bytes::Regex;
 /// Of course, the actual engine schematic is much larger. What is the sum of all of the part
 /// numbers in the engine schematic?
 pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
-    let sch = Schematic::from_lines(input.into_iter());
+    let sch = Schematic::from_lines(input);
     let sum = sch.all_nums.iter()
         .filter(|&num| num.near_symbol)
         .map(|num| num.value)
@@ -100,7 +100,7 @@ pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
 ///
 /// What is the sum of all of the gear ratios in your engine schematic?
 pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
-    let sch = Schematic::from_lines(input.into_iter());
+    let sch = Schematic::from_lines(input);
     let sum = sch.gears.values()
         .filter(|g| g.nums.len() == 2)
         .map(|g| g.nums[0].value * g.nums[1].value)

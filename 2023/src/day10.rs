@@ -280,7 +280,7 @@ pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
 /// loop. How many tiles are enclosed by the loop?
 ///
 pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
-    let mut maze = PipeMaze::from(input.into_iter());
+    let mut maze = PipeMaze::from(input);
     maze.traverse();
 
     debug!(">>>>> Traverse done, performing longitudinal collision detection' <<<<<");

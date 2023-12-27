@@ -97,11 +97,9 @@ pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
         .map(|v| v.parse().unwrap())
         .collect::<Vec<isize>>();
 
-    let prod_wins = times.into_iter().zip(records)
+    times.into_iter().zip(records)
         .map(|(time, record)| winning_waits(time, record))
-        .reduce(|acc, w| acc*w).unwrap();
-
-    prod_wins
+        .reduce(|acc, w| acc*w).unwrap()
 }
 
 /// # Bad Kerning

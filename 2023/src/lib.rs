@@ -43,7 +43,7 @@ fn get_filename<S: AsRef<str>>(day: u8, file: S) -> String {
 pub fn get_input<S: AsRef<str>>(day: u8, kind: S) -> Vec<String> {
     let filename = get_filename(day, kind.as_ref());
     get_reader(filename.as_str())
-        .expect(format!("failed to open test input file: day{day:02} - {}", kind.as_ref()).as_str())
+        .unwrap_or_else(|_| panic!("failed to open test input file: day{day:02} - {}", kind.as_ref()))
         .lines()
         .map(|l| l.expect("i/o error when reading"))
         .collect()

@@ -278,7 +278,7 @@ impl Almanac {
 
         for trans in &mut translations.inner {
             lines.next(); // skip header line
-            while let Some(line) = lines.next() {
+            for line in lines.by_ref() {
                 if line.is_empty() {
                     break;
                 }

@@ -105,7 +105,7 @@ pub fn solve_part1<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
     input.into_iter()
         .collect::<Vec<String>>()
         .split(|line| line.is_empty())
-        .map(|p| v_mirrors(p).get(0).unwrap_or(&0) + h_mirrors(p).get(0).unwrap_or(&0) * 100)
+        .map(|p| v_mirrors(p).first().unwrap_or(&0) + h_mirrors(p).first().unwrap_or(&0) * 100)
         .sum()
 }
 
@@ -197,17 +197,18 @@ pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
 
             // for each position (row, col) in a pattern
             for row in 0..pat.len() {
-                for col in 0..pat.get(0).map_or(0, |line| line.len()) {
+                for col in 0..pat.first().map_or(0, |line| line.len()) {
 
                     // create a copy of the original pattern with that position "de-smudged"
                     let mut smudged = pat.clone();
                     let mut newrow = smudged[row].clone().into_bytes();
-                    newrow.get_mut(col)
-                        .map(|ch| *ch = match ch {
+                    if let Some(ch) = newrow.get_mut(col) {
+                        *ch = match ch {
                             b'#' => b'.',
                             b'.' => b'#',
                             _ => panic!("mutating invalid character"),
-                        });
+                        }
+                    }
                     smudged[row] = String::from_utf8(newrow).unwrap();
 
                     // find any new mirroring points (excluding ones we already knew about)
@@ -234,7 +235,7 @@ pub fn solve_part2<L: IntoIterator<Item = String>>(input: L) -> AdvInt {
 }
 
 fn v_mirrors(pat: &[String]) -> Vec<usize> {
-    let width = pat.get(0).map(|line| line.len()).unwrap_or(0);
+    let width = pat.first().map(|line| line.len()).unwrap_or(0);
     // for each column that could be a mirror point
     (1..width).filter(|&col| {
         // verify that on all lines
